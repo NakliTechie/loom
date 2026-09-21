@@ -151,7 +151,7 @@ async function program(name, n) {
   document.querySelector(".r-input").style.display = p.interactive ? "" : "none";
   const strip = document.querySelector(".machine-strip"), nav = document.getElementById("nav");
   $("result").style.scrollMarginTop = (nav.offsetHeight + strip.offsetHeight + 8) + "px";
-  $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("result").scrollIntoView({ behavior: "smooth", block: "start" });   // the result sits right under the machine; the cards follow
   const rec = await runOnce(p.args, { label: p.title, keys: p.keys || "" });
   $("r-status").textContent = rec.why; $("r-status").classList.remove("running"); $("r-stop").disabled = true;
   $("r-stats").textContent = `${fmt(rec.instr)} instructions per node · ${fmtUs(rec.instr / 10)} of machine time · ${(rec.ms / 1000).toFixed(1)} s in this browser${rec.nodes > 1 ? ` · ${rec.nodes} nodes · ${fmt(rec.msgs)} link messages, ${fmt(rec.bytes)} bytes` : ""}`;
