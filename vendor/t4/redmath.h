@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#if defined(_MSC_VER) || (defined(__linux__) && !defined(TLOSS))
+#if defined(_MSC_VER) || defined(__EMSCRIPTEN__) || (defined(__linux__) && !defined(TLOSS))
 struct exception {
         int type;
         char *name;

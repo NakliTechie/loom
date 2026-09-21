@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loom</title>
+<meta name="description" content="A transputer in a browser tab: pahihu's T800 emulator compiled to WebAssembly, on a virtual clock, with the 1990 occam toolset running inside it.">
+<style>
+:root {
+  --canvas: #0f1114;
+  --ink: 232, 236, 240;
+  --i100: rgba(var(--ink), 0.94); --i70: rgba(var(--ink), 0.70); --i50: rgba(var(--ink), 0.50);
+  --i30: rgba(var(--ink), 0.30); --i15: rgba(var(--ink), 0.15); --i08: rgba(var(--ink), 0.08); --i04: rgba(var(--ink), 0.04);
+  --accent: #f0a742;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+:root[data-theme="light"] { --canvas: #f4f4f1; --ink: 18, 20, 24; --accent: #b3641e; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --canvas: #f4f4f1; --ink: 18, 20, 24; --accent: #b3641e; } }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--canvas); color: var(--i100); font: 12.5px/1.45 var(--mono); }
+a { color: inherit; }
+header { display: flex; align-items: baseline; gap: 18px; padding: 8px 16px; border-bottom: 1px solid var(--i15); }
+header h1 { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; margin: 0; }
+header .stat { color: var(--i70); }
+header .stat b { color: var(--i100); font-weight: 500; font-variant-numeric: tabular-nums; }
+header .state { padding: 1px 6px; border: 1px solid var(--i30); }
+header .state[data-s="running"] { border-color: var(--accent); color: var(--accent); }
+header .spacer { flex: 1; }
+main { display: grid; grid-template-columns: 260px 1fr 300px; grid-template-rows: 1fr; height: calc(100% - 38px); }
+section { border-right: 1px solid var(--i15); display: flex; flex-direction: column; min-height: 0; }
+section:last-child { border-right: 0; }
+h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--i50); margin: 0; padding: 8px 12px 6px; border-bottom: 1px solid var(--i08); }
+.files { flex: 1; overflow: auto; }
+.file { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 3px 12px; cursor: default; }
+.file:hover { background: var(--i04); }
+.file.sel { background: var(--i08); }
+.file .sz { color: var(--i50); font-variant-numeric: tabular-nums; }
+.file .dir { color: var(--i50); }
+.drop { margin: 8px 12px; padding: 14px 10px; border: 1px dashed var(--i30); color: var(--i70); text-align: center; }
+.drop.over { border-color: var(--accent); color: var(--accent); }
+.actions { padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--i08); }
+button { font: inherit; color: var(--i100); background: transparent; border: 1px solid var(--i30); padding: 3px 9px; cursor: pointer; }
+button:hover { border-color: var(--i70); }
+button.primary { border-color: var(--accent); color: var(--accent); }
+button:disabled { opacity: 0.4; cursor: default; }
+.console { flex: 1; overflow: auto; padding: 8px 12px; white-space: pre-wrap; word-break: break-all; }
+.console .sys { color: var(--i50); }
+.console .err { color: var(--accent); }
+.input { display: flex; border-top: 1px solid var(--i15); }
+.input input { flex: 1; font: inherit; color: var(--i100); background: transparent; border: 0; padding: 6px 12px; outline: 0; }
+.input input::placeholder { color: var(--i30); }
+.kv { padding: 6px 12px; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+.kv dt { color: var(--i50); } .kv dd { margin: 0; text-align: right; }
+.runs { flex: 1; overflow: auto; }
+.run { padding: 5px 12px; border-bottom: 1px solid var(--i08); }
+.run .cmd { color: var(--i70); }
+.run .n { font-variant-numeric: tabular-nums; }
+footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size: 11px; }
+.help { padding: 8px 12px; color: var(--i70); border-top: 1px solid var(--i08); }
+.help p { margin: 0 0 6px; }
+.help kbd { border: 1px solid var(--i30); padding: 0 4px; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; height: auto; } section { border-right: 0; border-bottom: 1px solid var(--i15); } .files { max-height: 30vh; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>LOOM</h1>
+  <span class="stat">T800 · <b id="nodes">1</b> node · virtual clock</span>
+  <span class="state" id="state" data-s="idle">idle</span>
+  <span class="stat">instr <b id="instr">0</b></span>
+  <span class="stat">t <b id="vtime">0 µs</b></span>
+  <span class="stat">host <b id="mips">—</b></span>
+  <span class="spacer"></span>
+  <span class="stat"><a href="https://param.naklitechie.com">param</a> · <a href="https://github.com/NakliTechie/loom">source</a> · v1.0</span>
+</header>
+<main>
+  <section>
+    <h2>DISK</h2>
+    <div class="files" id="files"></div>
+    <div class="drop" id="drop">drop files here<br><span style="font-size:11px">.btl bootables · .occ sources · d7205a.tar.gz toolset</span></div>
+    <div class="actions">
+      <button id="run" class="primary" disabled>run</button>
+      <button id="build" disabled>build</button>
+      <button id="stop" disabled>stop</button>
+      <button id="download" disabled>save</button>
+      <button id="delete" disabled>delete</button>
+    </div>
+  </section>
+  <section>
+    <h2>CONSOLE</h2>
+    <div class="console" id="console"></div>
+    <div class="input"><input id="stdin" placeholder="keys go to the transputer while it runs (needs cross-origin isolation)" autocomplete="off"></div>
+  </section>
+  <section>
+    <h2>RUN</h2>
+    <dl class="kv">
+      <dt>boot</dt><dd id="k-boot">—</dd>
+      <dt>instructions</dt><dd id="k-instr">—</dd>
+      <dt>virtual time</dt><dd id="k-vt">—</dd>
+      <dt>host time</dt><dd id="k-ht">—</dd>
+      <dt>halt</dt><dd id="k-halt">—</dd>
+      <dt>keyboard</dt><dd id="k-kbd">—</dd>
+    </dl>
+    <h2>LOG</h2>
+    <div class="runs" id="runs"></div>
+    <div class="help">
+      <p>One INMOS T800 emulated by pahihu's t4, compiled to WebAssembly, in a Worker. Time is virtual: 10 instructions per microsecond, every run deterministic.</p>
+      <p>The 1990 occam 2 toolset (D7205A) runs inside the transputer. It is not shipped here — see <a href="https://github.com/NakliTechie/loom/blob/main/LICENSING.md">why</a>. Drop your copy of <code>d7205a.tar.gz</code> and <b>build</b> compiles, links, configures and collects an <code>.occ</code> into a bootable.</p>
+      <p>This product includes software developed by Julian Highfield.</p>
+    </div>
+  </section>
+</main>
+<script type="module" src="loom.js"></script>
+</body>
+</html>

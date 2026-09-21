@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "loom",
+  "account_id": "62231b040ed00c96cdcf3a4541eab958",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "./site", "html_handling": "auto-trailing-slash", "not_found_handling": "404-page" },
+  "routes": [{ "pattern": "loom.naklitechie.com", "custom_domain": true }]
+}

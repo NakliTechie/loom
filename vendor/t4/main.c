@@ -857,8 +857,18 @@ int main (int argc, char **argv)
 	{
 #endif
 
+#ifdef T4WEB
+        /* Loom: main() only boots. web.c drives mainloop() in quanta and calls
+         * t4_cleanup() when the transputer stops. */
+        return 0;
+}
+void t4_cleanup (void)
+{
+        int temp;
+#else
 	/* Now start the emulator. */
 	mainloop ();
+#endif
 
 #if __profile__
 	/* METROWERKS PROFILER. */

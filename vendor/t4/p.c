@@ -747,7 +747,17 @@ struct timeval LastTOD;         /* Time-of-day */
 void update_tod (struct timeval *tp)
 {
         int rc;
-
+#ifdef T4WEB
+        /* Virtual clock: T4WEB_INSTR_PER_USEC instructions per microsecond
+         * (10 = a 20 MHz T800 at roughly 10 MIPS). Deterministic by construction. */
+        {
+                extern uint64_t ml_instr;
+                uint64_t usec = ml_instr / T4WEB_INSTR_PER_USEC;
+                tp->tv_sec  = (long)(usec / 1000000);
+                tp->tv_usec = (long)(usec % 1000000);
+                return;
+        }
+#endif
         rc = gettimeofday (tp, (void *)0);
         if (rc < 0)
         {
@@ -1735,6 +1745,15 @@ u_short ProfileCode (u_char instrCode, uint32_t oprCode)
         return ret;
 }
 
+#ifdef T4WEB
+/* Loom: the loop runs in bounded quanta and on a virtual clock.
+ * t4_run(budget) in web.c sets ml_budget and calls mainloop(); the loop returns
+ * when the budget is spent (ml_halted == 0) or the transputer stopped (ml_halted != 0). */
+uint64_t ml_budget = 0;
+uint64_t ml_instr  = 0;      /* instructions executed since boot: the virtual clock */
+int      ml_halted = 0;      /* 0 running, 1 server exit, 2 error halt */
+static int ml_inited = 0;
+#endif
 void mainloop (void)
 {
         uint32_t temp, temp2;
@@ -1759,6 +1778,11 @@ void mainloop (void)
         instrBytes  = 0;
         asmLines    = 0;
 #endif
+#ifdef T4WEB
+        if (!ml_inited)
+        {
+                ml_inited = 1;
+#endif
         m2dSourceStride = m2dDestStride = m2dLength = Undefined_p;
 
 	count1 = 0;
@@ -1767,11 +1791,19 @@ void mainloop (void)
 	timeslice = 0;
 	Timers = TimersStop;
 
-
-        islot = MAX_ICACHE;
         PROFILE(update_tod (&StartTOD));
+#ifdef T4WEB
+        }
+#endif
+        islot = MAX_ICACHE;
 	while (1)
 	{
+#ifdef T4WEB
+                if (ml_budget == 0)
+                        return;
+                ml_budget--;
+                ml_instr++;
+#endif
 #ifndef NDEBUG
                 temp = temp2 = Undefined_p;
                 otherWdesc = otherWPtr = otherPtr = altState = Undefined_p;
@@ -4381,9 +4413,19 @@ BadCode:
                 /* Halt when Error flag was set */
 		if ((!PrevError && ReadError) &&
                     (exitonerror || (ReadHaltOnError)))
+                {
+#ifdef T4WEB
+                        ml_halted = 2;
+#endif
 			break;
+                }
 		if (quit == TRUE)
+                {
+#ifdef T4WEB
+                        ml_halted = 1;
+#endif
 			break;
+                }
 
 #ifndef NDEBUG
                 fp_chkexcept ("mainloop");

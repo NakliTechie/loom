@@ -28,6 +28,21 @@
 #define __INT32_MIN__   ((-__INT32_MAX__)-1)
 
 
+#ifdef T4WEB
+/* WebAssembly has no FPU exception flags and no directed rounding. The flag
+ * constants are defined so the code compiles; fetestexcept() returns 0 and
+ * fesetround() succeeds without effect. Overflow / divide-by-zero / invalid on
+ * the binary operations are instead detected from the result (see db_binary,
+ * sn_binary). Directed rounding (fprp, fprm, fprz) is approximated by
+ * round-to-nearest: a documented gap of the browser build. */
+#ifndef FE_INVALID
+#define FE_INVALID   1
+#define FE_DIVBYZERO 4
+#define FE_OVERFLOW  8
+#define FE_UNDERFLOW 16
+#define FE_INEXACT   32
+#endif
+#endif
 #define FE_T800_EXCEPT  (FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW)
 
 #define REAL64_SIGN     0x8000000000000000ULL
@@ -677,6 +692,11 @@ fpreal64_t db_binary (fpreal64_t fb, fpreal64_t fa, fpreal64_t (*opr)(fpreal64_t
 #ifndef NDEBUG
         ResultDB = result;
 #endif
+#ifdef T4WEB
+        if (!fp_nandb (fa) && !fp_nandb (fb) && !fp_infdb (fa) && !fp_infdb (fb) &&
+            (fp_nandb (result) || fp_infdb (result)))
+                FP_Error = TRUE;
+#endif
 
         db_check_except ();
         return result;
@@ -751,6 +771,11 @@ fpreal32_t sn_binary (fpreal32_t fb, fpreal32_t fa, fpreal32_t (*opr)(fpreal32_t
 
 #ifndef NDEBUG
         ResultSN = result;
+#endif
+#ifdef T4WEB
+        if (!fp_nansn (fa) && !fp_nansn (fb) && !fp_infsn (fa) && !fp_infsn (fb) &&
+            (fp_nansn (result) || fp_infsn (result)))
+                FP_Error = TRUE;
 #endif
 
         sn_check_except ();

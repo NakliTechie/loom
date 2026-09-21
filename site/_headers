@@ -1,0 +1,6 @@
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cache-Control: public, max-age=0, must-revalidate
+/t4.wasm
+  Cache-Control: public, max-age=86400

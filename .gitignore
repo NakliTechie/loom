@@ -3,5 +3,3 @@ plan/
 node_modules/
 .wrangler/
 build/
-/site/t4.js
-/site/t4.wasm
