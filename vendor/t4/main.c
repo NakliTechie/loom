@@ -85,6 +85,12 @@ int exitonerror = false;
 int peeksize    = 8;
 int nodeid      = -1;
 int nxputers    = 0;
+static char CopyFileName[256];
+static char InpFileName[256], OutFileName[256];
+#ifdef T4WEB
+int ml_booting  = 0;
+int t4_boot_tail (void);
+#endif
 pid_t xputers[1024 + 1];
 
 int membits     = 0;
@@ -229,8 +235,6 @@ void main(void)
 int main (int argc, char **argv)
 #endif
 {
-	static char CopyFileName[256];
-        static char InpFileName[256], OutFileName[256];
         char IBoardSize[32], SpyNet[256];
 	int reset       = FALSE;
 	int arg;
@@ -734,6 +738,25 @@ int main (int argc, char **argv)
         /* Initialize processor. */
         init_processor ();
 
+#ifdef T4WEB
+        if ((FALSE == serve) && (nodeid >= 0))
+        {
+                /* Loom: a worker node boots from its link, one fabric quantum at a time
+                 * (t4_boot_step in web.c), then t4_boot_tail() finishes what main() would have. */
+                ml_booting = 1;
+                return 0;
+        }
+        return t4_boot_tail ();
+}
+int t4_boot_tail (void)
+{
+        uint32_t temp, temp2;
+        if (ml_booting)
+        {
+                /* link boot done by t4_boot_step(); nothing to load from a file */
+                ml_booting = 0;
+        }
+#else
         if ((FALSE == serve) && (nodeid >= 0))
         {
                 temp = 1;
@@ -748,6 +771,7 @@ int main (int argc, char **argv)
                         handler (-1);
                 }
         }
+#endif
         else
         {
                 /* Open boot file. */

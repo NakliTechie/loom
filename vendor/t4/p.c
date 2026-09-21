@@ -81,6 +81,13 @@ int nn_poll(struct nn_pollfd *fds, int nfds, int opt) { return EINVAL; }
 #include "netcfg.h"
 #ifdef T4SHLINKS
 #include "shlink.h"
+#elif defined(T4WEB)
+/* Loom: the "shared" links region is a private mirror in this Worker's heap.
+ * The fabric (JS) moves message slots between mirrors at quantum barriers. */
+void* shlink_attach (const char *fnm, int size){return calloc (1, size);}
+int shlink_detach (void *addr){free (addr); return 0;}
+void* shlink_alloc (const char *fnm, int size){return calloc (1, size);}
+int shlink_free (void){return 0;}
 #else
 void* shlink_attach (const char *fnm, int size){return NULL;}
 int shlink_detach (void *addr){return EINVAL;}
@@ -1192,11 +1199,15 @@ int linkcomms (char *where, int doBoot, int timeOut)
                         }
                         if (ret)
                                 break;
+#ifdef T4WEB
+                        timeOut = 0;
+#else
                         if (timeOut)
                         {
                                 usleep (SCH_POLL); timeOut -= SCH_POLL;
                                 if (timeOut < 0) timeOut = 0;
                         }
+#endif
                 } while ((0 == ret) && (timeOut));
         }
         else
@@ -1752,6 +1763,7 @@ u_short ProfileCode (u_char instrCode, uint32_t oprCode)
 uint64_t ml_budget = 0;
 uint64_t ml_instr  = 0;      /* instructions executed since boot: the virtual clock */
 int      ml_halted = 0;      /* 0 running, 1 server exit, 2 error halt */
+int      ml_idle   = 0;      /* set when the node yielded with nothing runnable */
 static int ml_inited = 0;
 #endif
 void mainloop (void)
@@ -4708,6 +4720,23 @@ int start_process (void)
                         active = TRUE;
                         break;
                 }
+#ifdef T4WEB
+                /* Loom: nothing runnable right now. Hand the quantum back to the fabric;
+                 * it advances this node's clock and re-enters here after delivering links. */
+                if (Idle)
+                {
+                        extern int ml_idle;
+                        update_time ();          /* virtual clock: lets due timers schedule their processes */
+                        if (!Idle)
+                        {
+                                active = TRUE;
+                                break;
+                        }
+                        ml_idle = TimerQEmpty ? 1 : 2;   /* 2: a timer will wake this node; not a deadlock */
+                        SetGotoSNP;
+                        return 1;
+                }
+#endif
 
 		/* Check timer queue, update timers. */
                 active = active || (!TimerQEmpty);

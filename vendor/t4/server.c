@@ -1218,8 +1218,12 @@ void sp_getkey (void)
 	char ch;
 
 #ifdef CURTERM
+#ifdef T4WEB
+        ch = getkey ();          /* blocks on the page's key ring, or returns -1 when there is none */
+#else
         while (!has_key ());
         ch = getkey ();
+#endif
 #else
 #ifndef __MWERKS__
 	if (t_state != GETK)
