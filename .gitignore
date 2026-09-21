@@ -3,3 +3,6 @@ plan/
 node_modules/
 .wrangler/
 build/
+
+# INMOS toolset images: never committed (see LICENSING.md)
+vendor/t4/itools/**/*.tar.gz
