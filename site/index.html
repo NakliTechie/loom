@@ -27,7 +27,7 @@ header .stat b { color: var(--i100); font-weight: 500; font-variant-numeric: tab
 header .state { padding: 1px 6px; border: 1px solid var(--i30); }
 header .state[data-s="running"] { border-color: var(--accent); color: var(--accent); }
 header .spacer { flex: 1; }
-main { display: grid; grid-template-columns: 260px 1fr 300px; grid-template-rows: 1fr; height: calc(100% - 38px); }
+main { display: grid; grid-template-columns: 240px 1fr 320px; grid-template-rows: 1fr; height: calc(100% - 38px); }
 section { border-right: 1px solid var(--i15); display: flex; flex-direction: column; min-height: 0; }
 section:last-child { border-right: 0; }
 h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--i50); margin: 0; padding: 8px 12px 6px; border-bottom: 1px solid var(--i08); }
@@ -57,12 +57,12 @@ button:disabled { opacity: 0.4; cursor: default; }
 .run .cmd { color: var(--i70); }
 .run .n { font-variant-numeric: tabular-nums; }
 footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size: 11px; }
-.topo { display: block; width: 100%; max-height: 200px; padding: 6px 12px 2px; }
+.topo { display: block; flex: 0 0 auto; width: 100%; height: 170px; padding: 6px 12px 2px; }
 .topo .lk { stroke: var(--i30); stroke-width: 1.2; transition: stroke 120ms; }
 .topo .lk.hot { stroke: var(--accent); stroke-width: 2; }
 .topo .nd circle { fill: var(--canvas); stroke: var(--i70); stroke-width: 1.2; }
 .topo .nd text { font: 9px var(--mono); fill: var(--i70); }
-.linkstats { padding: 0 12px 6px; color: var(--i70); font-size: 11px; max-height: 96px; overflow: auto; }
+.linkstats { flex: 0 0 auto; padding: 0 12px 6px; color: var(--i70); font-size: 11px; max-height: 84px; overflow: auto; }
 .linkstats div { display: flex; justify-content: space-between; }
 .help { padding: 8px 12px; color: var(--i70); border-top: 1px solid var(--i08); }
 .help p { margin: 0 0 6px; }

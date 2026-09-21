@@ -51,7 +51,7 @@ export function makeNode(createT4) {
         const t0 = mod._t4_instr();
         const halted = mod._t4_run(m.budget);
         const idleCode = mod._t4_idle(), idle = idleCode === 1, timer = idleCode === 2;
-        if (mod._t4_instr() < m.vt) mod._t4_set_instr(m.vt);   // the clock ends every quantum at vt
+        if (!halted && mod._t4_instr() < m.vt) mod._t4_set_instr(m.vt);   // the clock ends every quantum at vt (a halted node keeps its true count)
         const outs = [], freed = [], me = mod._t4_node();
         for (let s = 0; s < m.nslots && base; s++) {
           const l = len(s), mine = Math.floor(s / 8) === me;

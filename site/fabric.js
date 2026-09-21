@@ -77,6 +77,7 @@ export class Fabric {
         return false;
       });
       this.clearsNext = clears;
+      this.lastInstr = results.map((r) => r.instr);
       this.k++;
       this.onTick?.(this.k, vt, results);
       if (anyHalt || this.k >= this.maxQuanta) break;

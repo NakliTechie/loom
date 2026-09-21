@@ -147,7 +147,7 @@ function runOnce(args, { label } = {}) {
       for (const nd of nodes) nd.w.terminate();
       const halted = fabric.haltReason || 0;
       const why = fabric.stopped && fabric.userStopped ? "stopped" : { 1: "server exit", 2: "error flag" }[halted] || (fabric.idleStreak > 200 ? "deadlock: all idle" : "halted");
-      const ms = performance.now() - t0, instr = fabric.k * fabric.Q;
+      const ms = performance.now() - t0, instr = fabric.lastInstr?.[0] ?? fabric.k * fabric.Q;
       $("k-halt").textContent = why; running = false; setState("halted"); $("stop").disabled = true;
       const rec = { args, instr, ms, why, nodes: topo.nodes, msgs: fabric.stats.msgs, bytes: fabric.stats.bytes };
       runs.unshift(rec); renderRuns();
@@ -195,7 +195,7 @@ renderFiles();
 let topoState = null;
 function topoInit(topo) {
   const svg = $("topo"); svg.innerHTML = "";
-  const n = topo.nodes, W = 276, H = Math.max(160, Math.min(276, 40 + n * 6)), cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 22;
+  const n = topo.nodes, W = 296, H = 160, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 16;
   const pos = (i) => n === 1 ? [cx, cy] : [cx + R * Math.cos(-Math.PI / 2 + 2 * Math.PI * i / n), cy + R * Math.sin(-Math.PI / 2 + 2 * Math.PI * i / n)];
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const NS = "http://www.w3.org/2000/svg", el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
@@ -232,7 +232,7 @@ function topoPaint(k, final = false) {
 
 // ---------- first paint: precomputed traces, so the page says something before any file is dropped ----------
 fetch("traces/index.json").then((r) => r.json()).then((t) => {
-  print(`Loom · one T800 in this tab · virtual clock ${t.clock}. Three precomputed runs:\n`, "sys");
+  print(`Loom · T800s in this tab · virtual clock ${t.clock}. Precomputed runs:\n`, "sys");
   for (const tr of t.traces) {
     print(`\n$ t4 -s8 -se -sb ${tr.program}   (${tr.note})\n`, "sys");
     print(tr.output);
@@ -252,4 +252,6 @@ self.loom = {
   build: (path) => { if (path) selected = path; return build(); },
   text: (path) => new TextDecoder().decode(disk.get(path)),
   console: () => con.textContent,
+  keys: (text) => { for (const ch of text) pushKey(ch.charCodeAt(0)); },
+  stop: () => $("stop").onclick(),
 };
