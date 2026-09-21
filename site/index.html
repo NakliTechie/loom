@@ -35,6 +35,11 @@ button:disabled { opacity: 0.4; cursor: default; }
 .nav .spacer { flex: 1; } .nav .live { color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
 .tab { display: none; } .tab.on { display: block; }
 .story .next { margin-top: 2.5rem; font: 13px var(--mono); }
+.story h3 { font-size: 1.1rem; font-weight: 500; margin: 2rem 0 0.5rem; }
+.guide-list { padding-left: 1.2rem; } .guide-list li { margin-bottom: 0.5rem; }
+.story figure img { width: 100%; height: auto; display: block; border: 1px solid var(--i15); }
+.firstvisit { display: none; align-items: center; gap: 12px; padding: 6px 16px; font: 12.5px var(--mono); color: var(--i70); border-bottom: 1px solid var(--i15); background: var(--i04); }
+.firstvisit.on { display: flex; } .firstvisit .spacer { flex: 1; } .firstvisit button { padding: 1px 7px; }
 .result { margin: 0 0 1.4rem; border: 1px solid var(--accent); font: 12.5px/1.45 var(--mono); scroll-margin-top: 230px; }
 .r-label { font-size: 10px; letter-spacing: 0.1em; color: var(--accent); }
 .machine-strip { position: sticky; top: 41px; z-index: 4; background: var(--canvas); border-bottom: 1px solid var(--i15); padding: 8px 16px 6px; }
@@ -155,9 +160,12 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
   <a href="#numbers" data-tab="numbers">Numbers</a>
   <a href="#chart" data-tab="chart">The line</a>
   <a href="#workbench" data-tab="workbench">Workbench</a>
+  <a href="#guide" data-tab="guide">Guide</a>
   <span class="spacer"></span>
   <span class="live" id="nav-live"></span>
 </nav>
+
+<div class="firstvisit" id="firstvisit"><span>First time here? A 64-transputer supercomputer from 1991 runs in this tab. <a href="#guide" data-tab="guide">Read the two-minute guide</a> or <a href="#machine" data-tab="machine">go straight to the machine</a>.</span><span class="spacer"></span><button id="firstvisit-x" aria-label="dismiss">×</button></div>
 
 <div class="tab story" id="tab-history">
 <div class="wrap">
@@ -225,6 +233,64 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
   <div class="card"><h3>INMOS raytracer, 1990</h3><p>A farm: one node collects the image, one hands out work, the rest trace rays. Same image at every size.</p><div class="row"><button data-prog="ray" data-n="6">6 nodes</button><button data-prog="ray" data-n="18">18</button><button data-prog="ray" data-n="64">64</button></div></div>
   <div class="card"><h3>Boot MINIX 1.5</h3><p>A Unix on a transputer, 1990. Boots to a login prompt; log in as <code>root</code> and type at it.</p><div class="row"><button data-prog="minix">boot</button></div></div>
 </div>
+</div>
+</div>
+
+
+<div class="tab story" id="tab-guide">
+<div class="wrap">
+<h2>Guide <small>WHAT THIS IS AND HOW TO USE IT</small></h2>
+<p>This page is a working model of PARAM 8000, the 64-transputer supercomputer C-DAC built in India in 1991 after the United States refused to sell India a Cray. Everything runs inside your browser tab: nothing is uploaded, no account, no server doing the work. The five tabs are meant to be read in order, but each stands on its own.</p>
+
+<h3>The tabs</h3>
+<ul class="guide-list">
+  <li><b>History</b> — two short sections: the 1987 refusal and the 1991 machine. Every figure carries a numbered source; the numbers link into the long essay.</li>
+  <li><b>The machine</b> — the emulation. A schematic of the 64 nodes at the top, seven programs to run, and the result of whatever you ran.</li>
+  <li><b>Numbers</b> — one table: how fast a T800, a PARAM, a Cray CPU and a 2024 laptop core are on the same reference tests, in the same arithmetic. Measured cells were run for this site; published ones are cited; one is reconstructed and says so.</li>
+  <li><b>The line</b> — a chart of every US computer export-control threshold since 1992 against what a person could buy that year. India is on it twice.</li>
+  <li><b>Workbench</b> — the instrument underneath: a disk, a console, the fabric view, and a build button for people who bring their own transputer programs.</li>
+</ul>
+<figure><img src="guide/g-history.png" alt="The History tab" loading="lazy"><figcaption>History. Read this first if the name PARAM means nothing to you yet.</figcaption></figure>
+
+<h3>Running a program</h3>
+<p>Go to <a href="#machine" data-tab="machine">The machine</a>. The schematic at the top is a diagram, not a photograph: sixty-four T800 chips, a host card on the left, the link switch along the bottom. It stays in view while you scroll. Under it are seven cards. Click a button on a card and three things happen:</p>
+<ol class="guide-list">
+  <li>The machine boots the program onto as many nodes as it needs — one for most, six to sixty-four for the raytracer. The caption under the schematic tells you what is happening.</li>
+  <li>Nodes that are computing light up; links carrying data glow. Small programs finish in a blink and you will only see the finished state. The raytracer and MINIX run long enough to watch.</li>
+  <li>The result appears in the box directly under the schematic: the program's output, a picture if it made one, and a line of numbers.</li>
+</ol>
+<figure><img src="guide/g-cards.png" alt="The seven program cards" loading="lazy"><figcaption>The cards. Nothing to install or upload; the programs are on the page.</figcaption></figure>
+<figure><img src="guide/g-knight.png" alt="Result of the knight's tour" loading="lazy"><figcaption>A finished run. The status says <i>server exit</i>, which is the transputer's way of saying the program ended normally.</figcaption></figure>
+
+<h3>What each program does, and how long it takes</h3>
+<ul class="guide-list">
+  <li><b>Hello, world</b> — one line, 3,578 instructions, instant. Proof that the machine is real.</li>
+  <li><b>Primes to 2,000</b> — a sieve in occam. The program asks for a number; the page types 2000 for you. About a second of machine time.</li>
+  <li><b>Knight's tour, 6×6</b> — a backtracking search; prints the board with the move numbers. Around 22 seconds of machine time, a few seconds of yours.</li>
+  <li><b>Whetstone, double precision</b> — the classic floating-point benchmark on the T800's FPU. Prints per-module timings and a KWhetstones figure; those times are on the machine's own clock and will be identical every run.</li>
+  <li><b>Dhrystone 2.1</b> — the integer benchmark, compiled with INMOS's C compiler. 229 million instructions; a few seconds in your browser.</li>
+  <li><b>INMOS raytracer, 1990</b> — a processor farm: node 0 assembles the image, node 1 hands out work, the rest trace rays. Pick 6, 18 or 64 nodes. Expect roughly 30 seconds to a couple of minutes depending on your computer; the image is the same at every size, byte for byte. The output scrolls with patch messages while it works; the picture appears at the end.</li>
+  <li><b>Boot MINIX 1.5</b> — a small Unix from 1990 booting on one transputer. It stops at <code>login:</code>. Type <code>root</code> in the box under the output and press Enter, then try <code>ls /bin</code>, <code>cat /etc/passwd</code>, <code>dhrystone</code>. It runs until you press <b>stop</b>.</li>
+</ul>
+<figure><img src="guide/g-raytracer.png" alt="The raytracer finished on 18 nodes" loading="lazy"><figcaption>The raytracer on 18 nodes, finished: 195,502 messages passed over the links to make this picture.</figcaption></figure>
+<figure><img src="guide/g-minix.png" alt="MINIX 1.5 logged in" loading="lazy"><figcaption>MINIX, logged in as root. The box at the bottom of the result is the keyboard.</figcaption></figure>
+
+<h3>Machine time and your time</h3>
+<p>Every emulated transputer runs on a virtual clock: ten instructions per microsecond, about what a 20 MHz T800 managed. The result line reports both — <i>machine time</i> is how long the program took on the emulated PARAM; the seconds "in this browser" are how long your computer took to emulate it. Machine time is the same on every computer that opens this page, which is why two runs of the same program give the same numbers and the same bytes. The emulation does not model exact cycle timing; it models the instruction set, the FPU, the links and the scheduler.</p>
+
+<h3>The workbench</h3>
+<p>Everything the cards do, without the guard rails. Drop a transputer bootable (<code>.btl</code>) on the disk and press <b>run</b>; if a <code>.map</code> from the INMOS configurer sits beside it, the fabric wires up that many nodes to match. Drop an occam source (<code>.occ</code>) together with your own copy of the INMOS D7205A toolset and <b>build</b> compiles it — the compiler itself runs inside the emulated transputer, which is how these programs were built in 1990. The toolset is not shipped on this site; the <a href="https://github.com/NakliTechie/loom/blob/main/LICENSING.md">reason</a> is in the repository. Files you make can be saved back to your computer; nothing leaves the tab.</p>
+<figure><img src="guide/g-workbench.png" alt="The workbench" loading="lazy"><figcaption>The workbench: disk, console, fabric view.</figcaption></figure>
+
+<h3>Limits, stated plainly</h3>
+<ul class="guide-list">
+  <li>Not cycle-accurate. Instruction counts and link traffic are exact for the emulated program; nanoseconds are not modelled.</li>
+  <li>The 64-node runs want a real computer. On a phone, stay at 6.</li>
+  <li>A program waiting for input holds the machine until you type or press stop.</li>
+  <li>Directed rounding modes (the T800's <code>fprz</code>, <code>fprp</code>, <code>fprm</code>) are implemented in software for WebAssembly; the raytracer's output matches the native build bit for bit, which is the test that caught this.</li>
+</ul>
+<p class="small">Built on pahihu's <a href="https://github.com/pahihu/t4">t4</a> emulator, Julian Highfield's original work, and INMOS's own software. Source for everything on this page: <a href="https://github.com/NakliTechie/loom">NakliTechie/loom</a>. This product includes software developed by Julian Highfield.</p>
+<p class="next"><a href="#machine" data-tab="machine">Go to the machine →</a></p>
 </div>
 </div>
 

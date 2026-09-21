@@ -8,7 +8,7 @@ let selected = null, keysSab = null, keyRing = null, running = false;
 const runs = [];
 
 // ---------- tabs (hash routed) ----------
-const TABS = ["history", "machine", "numbers", "chart", "workbench"];
+const TABS = ["history", "machine", "numbers", "chart", "workbench", "guide"];
 function showTab(name) {
   if (!TABS.includes(name)) name = "history";
   for (const t of TABS) { document.getElementById(`tab-${t}`)?.classList.toggle("on", t === name); }
@@ -22,6 +22,10 @@ function showTab(name) {
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 document.addEventListener("click", (e) => { const a = e.target.closest("a[data-tab]"); if (a) { e.preventDefault(); showTab(a.dataset.tab); } });
 showTab(location.hash.slice(1));
+// first-visit line: a per-viewer convenience, dismissed once
+try { if (!localStorage.getItem("loom.seen")) $("firstvisit").classList.add("on"); } catch {}
+$("firstvisit-x").onclick = () => { $("firstvisit").classList.remove("on"); try { localStorage.setItem("loom.seen", "1"); } catch {} };
+document.addEventListener("click", (e) => { if (e.target.closest("#firstvisit a")) { $("firstvisit").classList.remove("on"); try { localStorage.setItem("loom.seen", "1"); } catch {} } });
 
 // ---------- keyboard ring (SharedArrayBuffer, only when cross-origin isolated) ----------
 if (self.crossOriginIsolated && typeof SharedArrayBuffer !== "undefined") {
