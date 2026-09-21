@@ -1,8 +1,8 @@
-# Loom — a transputer in a browser tab
+# PARAM / Loom — a transputer supercomputer in a browser tab
 
 Artifact 2 of the PARAM strand. pahihu's `t4` (Julian Highfield's INMOS T414/T800 emulator, BSD) compiled to WebAssembly and run in a Worker on a **virtual clock**: 10 instructions per microsecond, every run deterministic. The 1990 INMOS D7205A occam 2 toolset runs *inside* the emulated transputer, so a `.occ` file becomes a real transputer bootable without any compiler of ours.
 
-Live: https://loom.naklitechie.com · piece: https://param.naklitechie.com · numbers: [param-fp64](https://github.com/NakliTechie/param-fp64)
+Live: **https://param.naklitechie.com** — the story (1987 refusal → PARAM 8000 → the numbers → the export-control chart), a lit schematic of the 64-node machine, then the workbench. The long essay is at `/piece/` (its own repo, [param](https://github.com/NakliTechie/param), reached through a service binding); numbers in [param-fp64](https://github.com/NakliTechie/param-fp64).
 
 ## v1.0 — one node
 

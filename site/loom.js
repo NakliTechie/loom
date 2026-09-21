@@ -107,15 +107,25 @@ function showImage() {
   for (let i = 0, j = off; i < w * h; i++, j += 3) { img.data[4 * i] = b[j]; img.data[4 * i + 1] = b[j + 1]; img.data[4 * i + 2] = b[j + 2]; img.data[4 * i + 3] = 255; }
   ctx.putImageData(img, 0, 0); c.classList.add("shown");
 }
-async function demo(n) {
+const PROGRAMS = {
+  hello: { files: ["hello.btl"], args: ["-s8", "-se", "-sb", "hello.btl"], label: "hello × 1" },
+  whetstone: { files: ["whetstond.btl"], args: ["-s8", "-se", "-sb", "whetstond.btl", "10"], label: "whetstone (double) × 1" },
+  ray: (n) => ({ files: [`raytrace${n}.btl`, `raytrace${n}.map`], args: ["-s8", "-se", "-sb", `raytrace${n}.btl`], label: `raytracer × ${n}`, keys: "1\n" }),
+};
+async function program(name, n) {
   if (running) return;
-  for (const ext of ["btl", "map"]) if (!disk.has(`/work/raytrace${n}.${ext}`)) await addFile(`raytrace${n}.${ext}`, new Uint8Array(await (await fetch(`demo/raytrace${n}.${ext}`)).arrayBuffer()));
+  const p = typeof PROGRAMS[name] === "function" ? PROGRAMS[name](n) : PROGRAMS[name];
+  for (const f of p.files) if (!disk.has(`/work/${f}`)) await addFile(f, new Uint8Array(await (await fetch(`demo/${f}`)).arrayBuffer()));
   disk.delete("/work/ray.mtv"); $("image").classList.remove("shown");
-  autoKeys = "1\n";
-  selected = `/work/raytrace${n}.btl`; renderFiles();
-  return runOnce(["-s8", "-se", "-sb", `raytrace${n}.btl`], { label: `raytracer × ${n}` });
+  autoKeys = p.keys || null;
+  selected = `/work/${p.files[0]}`; renderFiles();
+  document.getElementById("workbench").scrollIntoView({ behavior: "smooth", block: "start" });
+  return runOnce(p.args, { label: p.label });
 }
-for (const b of document.querySelectorAll("#demo button")) b.onclick = () => demo(+b.dataset.n);
+const demo = (n) => program("ray", n);
+for (const b of document.querySelectorAll("[data-prog]")) b.onclick = () => program(b.dataset.prog, +b.dataset.n || 0);
+$("boot64").onclick = () => program("ray", 64);
+
 function workerNode() {
   const w = new Worker("node-worker.js", { type: "module" });
   let seq = 0; const waiting = new Map();
@@ -145,8 +155,8 @@ function runOnce(args, { label } = {}) {
         print(multi && i > 0 ? text.replace(/^/gm, `[${i}] `) : text, i < 0 ? "sys" : "");
         if (autoKeys && /Your Selection/.test(text)) { const k = autoKeys; autoKeys = null; setTimeout(() => { for (const ch of k) pushKey(ch.charCodeAt(0)); print(`[auto-typed "${k.replace("\n", "⏎")}" to the menu]\n`, "sys"); }, 0); }
       },
-      onLink: (link, bytes, k) => topoPulse(link, bytes, k),
-      onTick: (k, vt) => {
+      onLink: (link, bytes, k) => { topoPulse(link, bytes, k); const t = machine.traces.get(link); if (t) t.last = k; },
+      onTick: (k, vt, results) => {
         const now = performance.now();
         if (now - lastPaint < 60) return;
         lastPaint = now;
@@ -156,10 +166,10 @@ function runOnce(args, { label } = {}) {
         $("k-ht").textContent = ((now - t0) / 1000).toFixed(2) + " s";
         $("mips").textContent = (instr * topo.nodes / (now - t0) / 1000).toFixed(1) + " MIPS";
         $("k-msgs").textContent = `${fmt(fabric.stats.msgs)} · ${fmt(fabric.stats.bytes)} B`;
-        topoPaint(k);
+        topoPaint(k); machinePaint(k, results);
       },
     });
-    topoInit(topo);
+    topoInit(topo); machineInit(topo);
     fabric.start(topo, (i) => ({
       files, env: { ...ENV, ...(multi ? { SPYNET: mapName } : {}) }, cwd: "/work", keyRing: i === 0 ? keysSab : null,
       args: multi ? (i === 0 ? ["-s8", "-sl", "-sn", "0", ...args] : ["-s8", "-sl", "-sn", String(i)]) : args,
@@ -174,7 +184,7 @@ function runOnce(args, { label } = {}) {
       const rec = { args, instr, ms, why, nodes: topo.nodes, msgs: fabric.stats.msgs, bytes: fabric.stats.bytes };
       runs.unshift(rec); renderRuns();
       print(`[${why} · ${fmt(instr)} instr per node · ${fmtUs(instr / 10)} virtual · ${(ms / 1000).toFixed(2)} s host${multi ? ` · ${fmt(fabric.stats.msgs)} messages, ${fmt(fabric.stats.bytes)} B on links` : ""}]\n`, "sys");
-      topoPaint(fabric.k, true);
+      topoPaint(fabric.k, true); machinePaint(fabric.k, null, true);
       showImage();
       fabric = null; renderFiles(); resolve(rec);
     });
@@ -213,6 +223,59 @@ async function build() {
 $("build").onclick = build;
 
 renderFiles();
+
+// ---------- the machine: 8×8 T800 array schematic that lights while the fabric runs ----------
+const machine = { chips: [], labels: [], traces: new Map(), n: 0 };
+(function drawMachine() {
+  const svg = $("machine"); if (!svg) return;
+  const NS = "http://www.w3.org/2000/svg", el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  svg.appendChild(el("rect", { x: 8, y: 8, width: 884, height: 284, class: "board", rx: 2 }));
+  // host card
+  const host = el("g", {}); host.appendChild(el("rect", { x: 24, y: 24, width: 96, height: 56, class: "host" }));
+  const ht = el("text", { x: 72, y: 48, "text-anchor": "middle", class: "legend" }); ht.textContent = "HOST"; host.appendChild(ht);
+  const ht2 = el("text", { x: 72, y: 62, "text-anchor": "middle", class: "legend" }); ht2.textContent = "iserver · console · files"; host.appendChild(ht2);
+  svg.appendChild(host);
+  for (const [i, t] of ["PARAM 8000", "64 × IMS T800", "4 links each", "schematic"].entries()) { const lg = el("text", { x: 24, y: 112 + i * 12, class: "legend" }); lg.textContent = t; svg.appendChild(lg); }
+  // link switch bar
+  svg.appendChild(el("rect", { x: 24, y: 250, width: 852, height: 26, class: "bar" }));
+  const bt = el("text", { x: 450, y: 266, "text-anchor": "middle", class: "legend" }); bt.textContent = "reconfigurable link switch — the topology is whatever the program's .map asks for"; svg.appendChild(bt);
+  // 8×8 array
+  const x0 = 150, y0 = 22, cw = 78, ch = 27, sw = 60, sh = 18;
+  for (let i = 0; i < 64; i++) {
+    const r = Math.floor(i / 8), c = i % 8, x = x0 + c * (cw + 12), y = y0 + r * ch;
+    const g = el("g", {});
+    const chip = el("rect", { x, y, width: sw, height: sh, class: "chip", rx: 1 });
+    for (const [px, py] of [[x + sw / 2, y - 2], [x + sw + 1, y + sh / 2 - 1], [x + sw / 2, y + sh], [x - 3, y + sh / 2 - 1]]) g.appendChild(el("rect", { x: px - 1, y: py, width: 2, height: 2, class: "pad" }));
+    const t = el("text", { x: x + sw / 2, y: y + sh / 2 + 2, "text-anchor": "middle", class: "lbl" }); t.textContent = `T800 #${i}`;
+    g.appendChild(chip); g.appendChild(t); svg.appendChild(g);
+    machine.chips.push(chip); machine.labels.push(t);
+    chip._cx = x + sw / 2; chip._cy = y + sh / 2;
+  }
+  machine.svg = svg; machine.el = el;
+})();
+function machineInit(topo) {
+  if (!machine.svg) return;
+  for (const l of machine.traces.values()) l.line.remove(); machine.traces.clear();
+  machine.n = topo.nodes;
+  machine.chips.forEach((c, i) => { c.classList.toggle("active", i < topo.nodes); c.classList.remove("busy"); machine.labels[i].classList.toggle("active", i < topo.nodes); });
+  for (const { a, x, b, y } of topo.links) {
+    const A = machine.chips[a], B = machine.chips[b]; if (!A || !B) continue;
+    const line = machine.el("line", { x1: A._cx, y1: A._cy, x2: B._cx, y2: B._cy, class: "trace" });
+    machine.svg.insertBefore(line, machine.svg.children[3]);
+    machine.traces.set(`${a}.${x}→${b}.${y}`, { line, last: -1 }); machine.traces.set(`${b}.${y}→${a}.${x}`, { line, last: -1 });
+  }
+  $("machine-status").textContent = `Booting ${topo.nodes} node${topo.nodes > 1 ? "s" : ""}…`;
+}
+function machinePaint(k, results, final = false) {
+  if (!machine.svg || !machine.n) return;
+  for (let i = 0; i < machine.n; i++) machine.chips[i].classList.toggle("busy", !final && !!results && results[i].ran > 0 && !results[i].halted);
+  for (const t of machine.traces.values()) t.line.classList.toggle("hot", !final && k - t.last < 4);
+  if (final) $("machine-status").textContent = `Last run: ${machine.n} node${machine.n > 1 ? "s" : ""}, ${fmt(fabric?.stats.msgs || 0)} link messages.`;
+  else $("machine-status").textContent = `Running on ${machine.n} node${machine.n > 1 ? "s" : ""}: ${results ? results.filter((r) => r.ran > 0).length : 0} computing, ${fmt(fabric?.stats.msgs || 0)} link messages so far.`;
+}
+// fragments from the essay (same origin through /piece/)
+fetch("/piece/chart.svg").then((r) => r.ok ? r.text() : "").then((t) => { if (t) { $("chart").innerHTML = t; $("chart").querySelector("svg")?.classList.add("chart"); } }).catch(() => {});
+fetch("/piece/bench.html").then((r) => r.ok ? r.text() : "").then((t) => { if (t) $("bench").innerHTML = t; }).catch(() => {});
 
 // ---------- topology view: nodes on a circle, links as chords, activity as recent bytes ----------
 let topoState = null;
@@ -262,7 +325,6 @@ fetch("traces/index.json").then((r) => r.json()).then((t) => {
     print(`[${tr.halt} · ${fmt(tr.instr)} instr · ${fmtUs(tr.instr / 10)} virtual]\n`, "sys");
   }
   print(`\nDrop a .btl to run it here, or the D7205A toolset plus a .occ to build one.\n`, "sys");
-  if ((navigator.hardwareConcurrency || 2) >= 6 && !location.hash.includes("noauto")) { print(`\nStarting the raytracer on 6 transputers (add #noauto to the URL to skip).\n`, "sys"); demo(6); }
 }).catch(() => {});
 renderFiles();
 

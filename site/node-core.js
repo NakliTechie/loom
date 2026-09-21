@@ -52,6 +52,7 @@ export function makeNode(createT4, emit = null) {
         const t0 = mod._t4_instr();
         const halted = mod._t4_run(m.budget);
         const idleCode = mod._t4_idle(), idle = idleCode === 1, timer = idleCode === 2;
+        const executed = mod._t4_instr() - t0;          // instructions actually executed this quantum
         if (!halted && mod._t4_instr() < m.vt) mod._t4_set_instr(m.vt);   // the clock ends every quantum at vt (a halted node keeps its true count)
         const outs = [], freed = [], me = mod._t4_node();
         for (let s = 0; s < m.nslots && base; s++) {
@@ -60,7 +61,7 @@ export function makeNode(createT4, emit = null) {
           else if (l > 0 && !full.has(s)) { full.add(s); outs.push({ slot: s, bytes: mod.HEAPU8.slice(addr(s) + 2, addr(s) + 2 + l) }); }
         }
         const out = pending; pending = "";
-        return { reply: { instr: mod._t4_instr(), ran: mod._t4_instr() - t0, idle, timer, halted, out, outs, freed }, transfer: outs.map((o) => o.bytes.buffer) };
+        return { reply: { instr: mod._t4_instr(), ran: executed, idle, timer, halted, out, outs, freed }, transfer: outs.map((o) => o.bytes.buffer) };
       }
       if (m.type === "finish") {
         try { mod._t4_finish(); } catch (err) {}

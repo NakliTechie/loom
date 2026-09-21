@@ -8,6 +8,8 @@ class H(http.server.SimpleHTTPRequestHandler):
         # local-only: /fixtures/... maps to vendor/t4 (toolset tarball, examples) for driving tests; never deployed
         if path.startswith("/fixtures/"):
             return os.path.join(FIXTURES, path[len("/fixtures/"):].split("?")[0])
+        if path.startswith("/piece/"):   # local stand-in for the service binding: the sibling repo's site
+            return os.path.join(os.path.dirname(FIXTURES), "..", "..", "param", "site", path[len("/piece/"):].split("?")[0] or "index.html")
         return super().translate_path(path)
     def end_headers(self):
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")

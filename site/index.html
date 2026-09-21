@@ -3,101 +3,178 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loom</title>
-<meta name="description" content="A transputer in a browser tab: pahihu's T800 emulator compiled to WebAssembly, on a virtual clock, with the 1990 occam toolset running inside it.">
+<title>PARAM</title>
+<meta name="description" content="A 64-transputer supercomputer, built in India in 1991 after a Cray was refused, running in this browser tab: the history, the numbers, and the machine itself.">
 <style>
 :root {
   --canvas: #0f1114;
   --ink: 232, 236, 240;
-  --i100: rgba(var(--ink), 0.94); --i70: rgba(var(--ink), 0.70); --i50: rgba(var(--ink), 0.50);
+  --i100: rgba(var(--ink), 0.94); --i85: rgba(var(--ink), 0.85); --i70: rgba(var(--ink), 0.70); --i50: rgba(var(--ink), 0.50);
   --i30: rgba(var(--ink), 0.30); --i15: rgba(var(--ink), 0.15); --i08: rgba(var(--ink), 0.08); --i04: rgba(var(--ink), 0.04);
   --accent: #f0a742;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --measure: 40rem;
 }
 :root[data-theme="light"] { --canvas: #f4f4f1; --ink: 18, 20, 24; --accent: #b3641e; }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --canvas: #f4f4f1; --ink: 18, 20, 24; --accent: #b3641e; } }
 * { box-sizing: border-box; }
-html, body { height: 100%; }
-body { margin: 0; background: var(--canvas); color: var(--i100); font: 12.5px/1.45 var(--mono); }
+html { background: var(--canvas); color: var(--i100); }
+body { margin: 0; font: 12.5px/1.45 var(--mono); }
 a { color: inherit; }
-header { display: flex; align-items: baseline; gap: 18px; padding: 8px 16px; border-bottom: 1px solid var(--i15); }
-header h1 { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; margin: 0; }
-header .stat { color: var(--i70); }
-header .stat b { color: var(--i100); font-weight: 500; font-variant-numeric: tabular-nums; }
-header .state { padding: 1px 6px; border: 1px solid var(--i30); }
-header .state[data-s="running"] { border-color: var(--accent); color: var(--accent); }
-header .spacer { flex: 1; }
-main { display: grid; grid-template-columns: 240px 1fr 320px; grid-template-rows: 1fr; height: calc(100% - 38px - 34px); }
-section { border-right: 1px solid var(--i15); display: flex; flex-direction: column; min-height: 0; }
-section:last-child { border-right: 0; }
-h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--i50); margin: 0; padding: 8px 12px 6px; border-bottom: 1px solid var(--i08); }
-.files { flex: 1; overflow: auto; }
-.file { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 3px 12px; cursor: default; }
-.file:hover { background: var(--i04); }
-.file.sel { background: var(--i08); }
-.file .sz { color: var(--i50); font-variant-numeric: tabular-nums; }
-.file .dir { color: var(--i50); }
-.drop { margin: 8px 12px; padding: 14px 10px; border: 1px dashed var(--i30); color: var(--i70); text-align: center; }
-.drop.over { border-color: var(--accent); color: var(--accent); }
-.actions { padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--i08); }
 button { font: inherit; color: var(--i100); background: transparent; border: 1px solid var(--i30); padding: 3px 9px; cursor: pointer; }
 button:hover { border-color: var(--i70); }
 button.primary { border-color: var(--accent); color: var(--accent); }
 button:disabled { opacity: 0.4; cursor: default; }
+
+/* ---------- story (reading) ---------- */
+.story { font: 18px/1.55 var(--serif); padding: 0 16px; }
+.story .wrap { max-width: var(--measure); margin: 0 auto; padding: 4rem 0 3rem; }
+.story h1 { font-size: 3.4rem; line-height: 1; font-weight: 500; letter-spacing: 0.02em; margin: 0 0 0.6rem; }
+.story .dek { font-size: 1.25rem; color: var(--i70); margin: 0 0 0.6rem; }
+.story .byline { font: 0.75rem/1.5 var(--mono); color: var(--i50); margin: 0 0 2.5rem; }
+.story h2 { font-size: 1.3rem; font-weight: 500; margin: 3rem 0 0.7rem; }
+.story h2 small { font: 0.7rem var(--mono); color: var(--i50); margin-left: 10px; letter-spacing: 0.08em; }
+.story p { margin: 0 0 1rem; }
+.story .n { font-family: var(--mono); font-size: 0.85em; }
+.story a { text-decoration-color: var(--i30); text-underline-offset: 0.15em; }
+.story figure { margin: 1.6rem 0; }
+.story figcaption { font: 0.78rem/1.5 var(--mono); color: var(--i50); padding-top: 0.5rem; }
+.story .wide { max-width: 900px; margin-left: calc(50% - min(900px, 100vw - 32px) / 2); width: min(900px, calc(100vw - 32px)); }
+.story svg.chart { width: 100%; height: auto; display: block; }
+.grid { stroke: var(--i15); stroke-width: 1; } .axis { stroke: var(--i30); stroke-width: 1; }
+.tick { font: 12px var(--mono); fill: var(--i50); } .label { font: 12.5px var(--mono); fill: var(--i70); }
+.threshold { fill: none; stroke: var(--accent); stroke-width: 2.2; } .threshold-label { fill: var(--accent); }
+.chip { fill: none; stroke: var(--accent); stroke-width: 1.4; stroke-dasharray: 5 4; opacity: 0.8; } .chip-label { fill: var(--accent); opacity: 0.85; }
+.shelf { fill: none; stroke: var(--i70); stroke-width: 1.6; } .shelf-pt { fill: var(--canvas); stroke: var(--i100); stroke-width: 1.6; } .shelf-label { fill: var(--i70); }
+.event { fill: var(--accent); } .leader { stroke: var(--i30); stroke-width: 1; }
+.story table { border-collapse: collapse; width: 100%; font: 0.78rem/1.45 var(--mono); }
+.story th, .story td { text-align: left; padding: 0.3rem 0.5rem 0.3rem 0; border-bottom: 1px solid var(--i12, var(--i15)); vertical-align: top; }
+.story th { color: var(--i50); font-weight: 500; } .story td.n, .story th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.story .small { font-size: 0.85rem; color: var(--i70); }
+.programs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 1.2rem 0 0; }
+.programs .card { border: 1px solid var(--i15); padding: 12px 14px; font: 12.5px/1.45 var(--mono); }
+.programs .card h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.programs .card p { margin: 0 0 10px; color: var(--i70); }
+.programs .card .row { display: flex; gap: 6px; flex-wrap: wrap; }
+.boot { margin: 2rem 0 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font: 12.5px var(--mono); color: var(--i70); }
+.boot button.primary { font-size: 14px; padding: 8px 16px; }
+
+/* ---------- the machine (schematic) ---------- */
+.machine { width: 100%; height: auto; display: block; background: var(--i04); border: 1px solid var(--i15); }
+.machine .board { fill: none; stroke: var(--i30); }
+.machine .slot { fill: var(--canvas); stroke: var(--i30); stroke-width: 0.8; }
+.machine .chip { fill: var(--i08); stroke: var(--i50); stroke-width: 0.8; stroke-dasharray: none; opacity: 1; }
+.machine .chip.active { stroke: var(--i85); }
+.machine .chip.busy { fill: rgba(240, 167, 66, 0.28); stroke: var(--accent); }
+.machine .lbl { font: 5.5px var(--mono); fill: var(--i50); }
+.machine .lbl.active { fill: var(--i85); }
+.machine .pad { fill: var(--i30); }
+.machine .trace { fill: none; stroke: var(--i30); stroke-width: 0.9; }
+.machine .trace.hot { stroke: var(--accent); stroke-width: 1.6; }
+.machine .legend { font: 6.5px var(--mono); fill: var(--i50); }
+.machine .bar { fill: var(--i08); stroke: var(--i30); stroke-width: 0.8; }
+.machine .host { fill: var(--i08); stroke: var(--i50); stroke-width: 0.8; }
+
+/* ---------- workbench (instrument) ---------- */
+.bench { border-top: 1px solid var(--i15); }
+.bench header { display: flex; align-items: baseline; gap: 18px; padding: 8px 16px; border-bottom: 1px solid var(--i15); }
+.bench h1 { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; margin: 0; }
+.bench .stat { color: var(--i70); } .bench .stat b { color: var(--i100); font-weight: 500; font-variant-numeric: tabular-nums; }
+.bench .state { padding: 1px 6px; border: 1px solid var(--i30); }
+.bench .state[data-s="running"] { border-color: var(--accent); color: var(--accent); }
+.bench .spacer { flex: 1; }
+.bench main { display: grid; grid-template-columns: 240px 1fr 320px; height: 78vh; min-height: 520px; }
+.bench section { border-right: 1px solid var(--i15); display: flex; flex-direction: column; min-height: 0; }
+.bench section:last-child { border-right: 0; }
+.bench h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--i50); margin: 0; padding: 8px 12px 6px; border-bottom: 1px solid var(--i08); }
+.files { flex: 1; overflow: auto; }
+.file { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 3px 12px; cursor: default; }
+.file:hover { background: var(--i04); } .file.sel { background: var(--i08); }
+.file .sz { color: var(--i50); font-variant-numeric: tabular-nums; } .file .dir { color: var(--i50); }
+.drop { margin: 8px 12px; padding: 14px 10px; border: 1px dashed var(--i30); color: var(--i70); text-align: center; }
+.drop.over { border-color: var(--accent); color: var(--accent); }
+.actions { padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--i08); }
 .console { flex: 1; overflow: auto; padding: 8px 12px; white-space: pre-wrap; word-break: break-all; }
-.console .sys { color: var(--i50); }
-.console .err { color: var(--accent); }
+.console .sys { color: var(--i50); } .console .err { color: var(--accent); }
 .input { display: flex; border-top: 1px solid var(--i15); }
 .input input { flex: 1; font: inherit; color: var(--i100); background: transparent; border: 0; padding: 6px 12px; outline: 0; }
 .input input::placeholder { color: var(--i30); }
 .kv { padding: 6px 12px; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-variant-numeric: tabular-nums; }
 .kv dt { color: var(--i50); } .kv dd { margin: 0; text-align: right; }
 .runs { flex: 1; overflow: auto; }
-.run { padding: 5px 12px; border-bottom: 1px solid var(--i08); }
-.run .cmd { color: var(--i70); }
-.run .n { font-variant-numeric: tabular-nums; }
-footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size: 11px; }
-.demo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--i15); color: var(--i70); }
-.demo button { border-color: var(--accent); color: var(--accent); }
-.demo .hint { color: var(--i50); }
-.image { display: none; flex: 0 0 auto; width: 128px; height: 128px; margin: 0 12px 6px; image-rendering: pixelated; border: 1px solid var(--i15); }
+.run { padding: 5px 12px; border-bottom: 1px solid var(--i08); } .run .cmd { color: var(--i70); } .run .n { font-variant-numeric: tabular-nums; }
+.image { display: none; flex: 0 0 auto; width: 128px; height: 128px; margin: 6px 12px; image-rendering: pixelated; border: 1px solid var(--i15); }
 .image.shown { display: block; }
-.topo { display: block; flex: 0 0 auto; width: 100%; height: 170px; padding: 6px 12px 2px; }
-.topo .lk { stroke: var(--i30); stroke-width: 1.2; transition: stroke 120ms; }
-.topo .lk.hot { stroke: var(--accent); stroke-width: 2; }
-.topo .nd circle { fill: var(--canvas); stroke: var(--i70); stroke-width: 1.2; }
-.topo .nd text { font: 9px var(--mono); fill: var(--i70); }
+.topo { display: block; flex: 0 0 auto; width: 100%; height: 150px; padding: 6px 12px 2px; }
+.topo .lk { stroke: var(--i30); stroke-width: 1.2; } .topo .lk.hot { stroke: var(--accent); stroke-width: 2; }
+.topo .nd circle { fill: var(--canvas); stroke: var(--i70); stroke-width: 1.2; } .topo .nd text { font: 9px var(--mono); fill: var(--i70); }
 .linkstats { flex: 0 0 auto; padding: 0 12px 6px; color: var(--i70); font-size: 11px; max-height: 84px; overflow: auto; }
 .linkstats div { display: flex; justify-content: space-between; }
 .help { padding: 8px 12px; color: var(--i70); border-top: 1px solid var(--i08); }
 .help p { margin: 0 0 6px; }
-.help kbd { border: 1px solid var(--i30); padding: 0 4px; }
-@media (max-width: 860px) { main { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; height: auto; } section { border-right: 0; border-bottom: 1px solid var(--i15); } .files { max-height: 30vh; } }
+footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top: 1px solid var(--i15); }
+@media (max-width: 860px) { .bench main { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; height: auto; } .bench section { border-right: 0; border-bottom: 1px solid var(--i15); } .files { max-height: 30vh; } }
 </style>
 </head>
 <body>
+
+<div class="story">
+<div class="wrap">
+<header>
+  <h1>PARAM</h1>
+  <p class="dek">A 64-transputer supercomputer, built in India in 1991 because a Cray was refused. This page runs one.</p>
+  <p class="byline">Chirag Patnaik · September 2026 · <a href="/piece/">the long essay</a> · <a href="https://github.com/NakliTechie/loom">source</a> · <a href="#workbench">skip to the machine</a></p>
+</header>
+
+<h2>1987 <small>THE REFUSAL</small></h2>
+<p>In 1986 India asked to buy a Cray X-MP/24 for the National Centre for Medium Range Weather Forecasting. The stated use was monsoon prediction. Washington declined the two-processor machine and offered the single-processor X-MP/14 instead, on conditions: civilian use only, no nuclear-weapons research, and US personnel with access to the installation. India withdrew the request days before Rajiv Gandhi's visit to Washington and took the X-MP/14. The sale was signed on 9 October 1987.<a href="/piece/#n4" class="n">[1]</a></p>
+<p>One X-MP CPU: a 9.5 nanosecond clock, 64-bit words, a theoretical peak of <span class="n">210 MFLOPS</span>, and <span class="n">53 MFLOPS</span> on the standard LINPACK 100 test.<a href="/piece/#n6" class="n">[2]</a> The machine India was refused had two.</p>
+
+<h2>1991 <small>THE MACHINE THEY BUILT</small></h2>
+<p>C-DAC was set up in Pune in 1988. Its first machine, PARAM 8000, was delivered as a 64-node system in August 1991. Each node was an INMOS transputer: a 32-bit microprocessor with a 64-bit floating-point unit, 4 KB of memory and four serial links on one chip, designed to be wired to other transputers and programmed in occam, a language where processes talk only through channels. PARAM wired 64 of them through a reconfigurable switch, so the topology was whatever the program asked for.<a href="/piece/#n7" class="n">[3]</a></p>
+<figure class="wide">
+  <svg id="machine" class="machine" viewBox="0 0 900 300" role="img" aria-label="Schematic of a 64-transputer PARAM 8000: an 8 by 8 array of T800 nodes, a host card, and a link switch. Nodes light while they run in the emulation below."></svg>
+  <figcaption>Schematic, not a photograph: 64 T800 nodes, a host card, a link switch. When the machine below is running, the nodes that are computing light up and the links carrying traffic glow. <span id="machine-status">Idle.</span></figcaption>
+</figure>
+<p>A single 20 MHz T800 managed <span class="n">0.37 MFLOPS</span> on LINPACK 100 in double precision, per Dongarra's table; INMOS quoted <span class="n">1.5 MFLOPS</span> on Livermore Loop 7 in single precision.<a href="/piece/#n8" class="n">[4]</a> Sixty-four of them, if none ever waited for another, would reach about 24 MFLOPS on that test — less than half of one Cray CPU. C-DAC's own figure for a 256-node machine was 1 GFLOPS theoretical and 100 to 200 MFLOPS sustained.<a href="/piece/#n9" class="n">[5]</a> The machine sold anyway, at around $350,000, to buyers that included Germany, the United Kingdom and Russia.<a href="/piece/#n11" class="n">[6]</a></p>
+
+<h2>How fast, exactly <small>MEASURED</small></h2>
+<p>These are the numbers, FP64 unless marked, from published period tables and from this laptop (Apple M4 Pro) running the same reference kernels under the same rules. Every cell is either measured here, published with a citation, or reconstructed and labelled. Method and sources: <a href="https://github.com/NakliTechie/param-fp64">param-fp64</a>.</p>
+<figure id="bench-figure"><div id="bench"></div></figure>
+<p class="small">One M4 Pro core against one T800-20 on LINPACK 100 is a factor of about forty-two thousand; against one X-MP/14se CPU, about three hundred.</p>
+
+<h2>The line and the shelf <small>1987–2026</small></h2>
+<p>Every performance threshold the US has written into computer export controls since 1992, converted to FP64, against the fastest FP64 box a person could buy that year. India is on the chart twice. The conversion is a device and the essay says so before drawing it; the short version is that the consumer shelf stopped climbing in FP64 around 2019, and in the unit the 2022 chip rules use, a gaming card was over the line before the line was drawn.</p>
+<figure class="wide"><div id="chart"></div><figcaption>From <a href="/piece/">the essay</a>, which carries the 22 sources.</figcaption></figure>
+
+<h2>Now run it <small>THE EMULATION</small></h2>
+<p>Below is a PARAM 8000 in this tab. Each node is INMOS T800 emulated by <a href="https://github.com/pahihu/t4">t4</a>, compiled to WebAssembly and run in its own Worker, all of them in lockstep on one virtual clock at ten instructions per microsecond. Time on the machine is therefore the same on every computer that opens this page, and every run gives the same bytes. The programs are real transputer binaries produced by INMOS's 1990 occam toolset — the compiler itself runs inside the emulated transputer, and you can use it if you have the toolset image.</p>
+<div class="programs">
+  <div class="card"><h3>Hello</h3><p>The smallest program: one transputer, one line. 3,578 instructions.</p><div class="row"><button data-prog="hello">run on 1</button></div></div>
+  <div class="card"><h3>Whetstone, double precision</h3><p>The 1970s floating-point benchmark, in occam, on one T800. Timings are on the virtual clock.</p><div class="row"><button data-prog="whetstone">run on 1</button></div></div>
+  <div class="card"><h3>INMOS raytracer, 1990</h3><p>A farm: one node collects the image, one hands out work, the rest trace rays. The image is identical whatever the node count.</p><div class="row"><button data-prog="ray" data-n="6">6 nodes</button><button data-prog="ray" data-n="18">18</button><button data-prog="ray" data-n="64">64</button></div></div>
+</div>
+<div class="boot"><button class="primary" id="boot64">Boot 64 transputers and trace the image</button><span>about a minute on a laptop; the machine above lights up as it works</span></div>
+</div>
+</div>
+
+<div class="bench" id="workbench">
 <header>
   <h1>LOOM</h1>
-  <span class="stat">T800 × <b id="nodes">1</b> · virtual clock</span>
+  <span class="stat">T800 × <b id="nodes">0</b> · virtual clock</span>
   <span class="state" id="state" data-s="idle">idle</span>
   <span class="stat">instr <b id="instr">0</b></span>
   <span class="stat">t <b id="vtime">0 µs</b></span>
   <span class="stat">host <b id="mips">—</b></span>
   <span class="spacer"></span>
-  <span class="stat"><a href="/piece/">the piece</a> · <a href="https://github.com/NakliTechie/loom">source</a> · v1.1</span>
+  <span class="stat"><a href="#top">history</a> · <a href="/piece/">the essay</a> · <a href="https://github.com/NakliTechie/loom">source</a> · v1.1</span>
 </header>
-<div class="demo" id="demo">
-  <span>1990 INMOS occam raytracer, compiled by the period toolset, on</span>
-  <button data-n="6">6 transputers</button>
-  <button data-n="18">18 transputers</button>
-  <button data-n="64">64 transputers</button>
-  <span class="hint" id="demo-hint">— every run is deterministic; the image is identical at every size</span>
-</div>
 <main>
   <section>
     <h2>DISK</h2>
     <div class="files" id="files"></div>
-    <div class="drop" id="drop">drop files here<br><span style="font-size:11px">.btl bootables · .occ sources · d7205a.tar.gz toolset</span></div>
+    <div class="drop" id="drop">drop files here<br><span style="font-size:11px">.btl bootables (+ .map for many nodes) · .occ sources · d7205a.tar.gz toolset</span></div>
     <div class="actions">
       <button id="run" class="primary" disabled>run</button>
       <button id="build" disabled>build</button>
@@ -109,12 +186,12 @@ footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size
   <section>
     <h2>CONSOLE</h2>
     <div class="console" id="console"></div>
-    <div class="input"><input id="stdin" placeholder="keys go to the transputer while it runs (needs cross-origin isolation)" autocomplete="off"></div>
+    <div class="input"><input id="stdin" placeholder="keys go to the transputer while it runs" autocomplete="off"></div>
   </section>
   <section>
     <h2>FABRIC</h2>
-    <svg id="topo" class="topo" viewBox="0 0 276 160" aria-label="topology"></svg>
-    <canvas id="image" class="image" width="256" height="256" hidden></canvas>
+    <svg id="topo" class="topo" viewBox="0 0 276 150" aria-label="topology"></svg>
+    <canvas id="image" class="image" width="256" height="256"></canvas>
     <div class="linkstats" id="linkstats"></div>
     <h2>RUN</h2>
     <dl class="kv">
@@ -129,12 +206,13 @@ footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size
     <h2>LOG</h2>
     <div class="runs" id="runs"></div>
     <div class="help">
-      <p>INMOS T800s emulated by pahihu's t4, compiled to WebAssembly, one per Worker, in lockstep on one virtual clock (10 instructions per microsecond; link messages move at quantum barriers), so every run is deterministic. Drop a configured bootable with its <code>.map</code> and the fabric wires itself to match.</p>
-      <p>The 1990 occam 2 toolset (D7205A) runs inside the transputer. It is not shipped here — see <a href="https://github.com/NakliTechie/loom/blob/main/LICENSING.md">why</a>. Drop your copy of <code>d7205a.tar.gz</code> and <b>build</b> compiles, links, configures and collects an <code>.occ</code> into a bootable.</p>
+      <p>The 1990 occam 2 toolset (D7205A) is not shipped here — <a href="https://github.com/NakliTechie/loom/blob/main/LICENSING.md">why</a>. Drop your copy of <code>d7205a.tar.gz</code> and <b>build</b> compiles, links, configures and collects an <code>.occ</code> into a bootable, inside the transputer. Nothing leaves the tab.</p>
       <p>This product includes software developed by Julian Highfield.</p>
     </div>
   </section>
 </main>
+<footer>Loom · a project in the PARAM strand · <a href="https://github.com/NakliTechie/param">essay repo</a> · <a href="https://github.com/NakliTechie/param-fp64">numbers repo</a> · <a href="https://github.com/NakliTechie/loom">emulator repo</a></footer>
+</div>
 <script type="module" src="loom.js"></script>
 </body>
 </html>
