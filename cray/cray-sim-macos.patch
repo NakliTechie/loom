@@ -1,0 +1,168 @@
+diff --git a/simulator/common.mak b/simulator/common.mak
+index a68badc..eebaa02 100644
+--- a/simulator/common.mak
++++ b/simulator/common.mak
+@@ -142,8 +142,12 @@ INC_DIRS += $(DEP_INC_DIRS) $(EXTRA_INC)
+ DEFINES += _FILE_OFFSET_BITS=64
+ 
+ ifndef LINK_TYPE
++ifeq ("$(shell uname)","Darwin")
++LINK_TYPE=dynamic
++else
+ LINK_TYPE=static
+ endif
++endif
+ 
+ #	$(if ("$(SYSTEM)","cygwin"), $(1), :lib$(strip $(1)).a)
+ ifeq ($(LINK_TYPE),static)
+@@ -175,7 +179,9 @@ NCURSES_LIBS =
+ BOOST_LIBS =
+ COMMON_LIBS =
+ 
++ifneq ("$(shell uname)","Darwin")
+ BOOST_LIBS += $(call static_lib, boost_system)
++endif
+ BOOST_LIBS += $(call static_lib, boost_filesystem)
+ BOOST_LIBS += $(call static_lib, boost_regex)
+ BOOST_LIBS += $(call static_lib, boost_thread)
+@@ -183,8 +189,10 @@ BOOST_LIBS += $(call static_lib, boost_timer)
+ BOOST_LIBS += $(call static_lib, boost_chrono)
+ 
+ COMMON_LIBS += $(BOOST_LIBS)
++ifneq ("$(shell uname)","Darwin")
+ COMMON_LIBS += supc++
+ COMMON_LIBS += stdc++
++endif
+ 
+ ifeq ("$(SYSTEM)","mingw")
+ COMMON_LIBS += wsock32
+@@ -198,7 +206,9 @@ ifeq ($(LINK_TYPE),static)
+ NCURSES_LIBS += $(call static_lib, termcap)
+ NCURSES_LIBS += $(call static_lib, gpm)
+ endif
++ifneq ("$(shell uname)","Darwin")
+ BOOST_LIBS += $(call static_lib, rt)
++endif
+ COMMON_LIBS += pthread
+ endif
+ ifeq ($(SYSTEM),cygwin)
+diff --git a/simulator/engine.mak b/simulator/engine.mak
+index b3d8377..49beef0 100644
+--- a/simulator/engine.mak
++++ b/simulator/engine.mak
+@@ -14,8 +14,16 @@ ifndef DEP_CFLAGS
+ DEP_CFLAGS =
+ endif
+ ifndef CLFLAGS
++ifeq ("$(shell uname)","Darwin")
++GROUP_START =
++GROUP_END =
++CLFLAGS = -Wl,-dead_strip
++else
++GROUP_START = -Wl,--start-group
++GROUP_END = -Wl,--end-group
+ CLFLAGS = -Wl,--relax -Wl,--no-whole-archive -Wl,-O,2 -Wl,--gc-sections
+ endif
++endif
+ ifndef CLSOFLAGS
+ CLSOFLAGS = -static -shared -Wl,-Bsymbolic -Wl,-export-dynamic -fPIC -Wl,--relax -Wl,--no-whole-archive -Wl,-O,2 -Wl,--gc-sections
+ endif
+@@ -25,7 +33,9 @@ endif
+ 
+ ifeq ($(SYSTEM),linux)
+ #CLFLAGS += -Wl,--whole-archive -lpthread -static -Wl,--no-whole-archive
++ifneq ("$(shell uname)","Darwin")
+ CLFLAGS += -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
++endif
+ CFLAGS += -gdwarf-2
+ CXXFLAGS += -gdwarf-2
+ endif
+@@ -243,7 +253,7 @@ ifeq ($(TARGET_TYPE),EXECUTABLE)
+ define BIN_TARGET_TEMPLATE
+ $(1): $(OBJ_FILES) $(SRCLIB_FILES)
+ 	@-$(call MKDIR,$(BIN_DIR)) $(NULL_REDIRECT)
+-	$(GCXX) $(CLFLAGS) $(OBJ_FILES) $(LIBDIR_FLAGS) -L$(LIB_DIR) -Wl,--start-group $(addprefix -l,$(SOURCE_LIBS)) $(addprefix -l,$(LINK_LIBS)) -Wl,--end-group -o $(1)
++	$(GCXX) $(CLFLAGS) $(OBJ_FILES) $(LIBDIR_FLAGS) -L$(LIB_DIR) $(GROUP_START) $(addprefix -l,$(SOURCE_LIBS)) $(addprefix -l,$(LINK_LIBS)) $(GROUP_END) -o $(1)
+ 	$(OBJCOPY) --only-keep-debug $(1) $(addsuffix .dbg,$(basename $(1)))
+ 	$(STRIP) --strip-debug --strip-unneeded $(1)
+ 	$(OBJCOPY) --add-gnu-debuglink=$(addsuffix .dbg,$(basename $(1))) $(1)
+diff --git a/simulator/sim_lib/Makefile b/simulator/sim_lib/Makefile
+index 3e13f05..5a1954b 100644
+--- a/simulator/sim_lib/Makefile
++++ b/simulator/sim_lib/Makefile
+@@ -69,8 +69,12 @@ ifeq ("$(SYSTEM)","cygwin")
+ SOURCES += vtap_win32.cpp
+ endif
+ ifeq ("$(SYSTEM)","linux")
++ifeq ("$(shell uname)","Darwin")
++SOURCES += vtap_none.cpp
++else
+ SOURCES += vtap_linux.cpp
+ endif
++endif
+ 
+ 
+ 
+diff --git a/simulator/sim_lib/config_file.h b/simulator/sim_lib/config_file.h
+index 4d75623..98a8803 100644
+--- a/simulator/sim_lib/config_file.h
++++ b/simulator/sim_lib/config_file.h
+@@ -105,6 +105,13 @@ FROM_STRING(uint32_t)
+ FROM_STRING( int32_t)
+ FROM_STRING(uint64_t)
+ FROM_STRING( int64_t)
++// loom port: on Darwin (and wasm32) `unsigned long` / `long` are distinct from the fixed-width
++// types above, so size_t needs its own specialisation or it silently uses ptree's decimal-only
++// default translator (which cannot parse the 0x... addresses in the config files).
++#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
++FROM_STRING(unsigned long)
++FROM_STRING(long)
++#endif
+ 
+ #undef FROM_STRING
+ 
+@@ -226,6 +233,14 @@ template<typename Ch, typename Traits, typename Alloc> struct translator_between
+ template<typename Ch, typename Traits, typename Alloc> struct translator_between<std::basic_string< Ch, Traits, Alloc >, int64_t> {
+     typedef IntTranslator_c<int64_t> type;
+ };
++#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
++template<typename Ch, typename Traits, typename Alloc> struct translator_between<std::basic_string< Ch, Traits, Alloc >, unsigned long> {
++    typedef IntTranslator_c<unsigned long> type;
++};
++template<typename Ch, typename Traits, typename Alloc> struct translator_between<std::basic_string< Ch, Traits, Alloc >, long> {
++    typedef IntTranslator_c<long> type;
++};
++#endif
+ /****
+ template<typename Ch, typename Traits, typename Alloc> struct translator_between<std::basic_string< Ch, Traits, Alloc >, CAddr_t> {
+ 	typedef CAddrTranslator_c type;
+diff --git a/simulator/sim_lib/console.cpp b/simulator/sim_lib/console.cpp
+index b632e91..edc2fe3 100644
+--- a/simulator/sim_lib/console.cpp
++++ b/simulator/sim_lib/console.cpp
+@@ -120,7 +120,7 @@ void Console_c::SendFromQueue() {
+ 			for (int i = 0; i < 100; ++i) {
+ 				if (mInSendFromQueue < 100) {
+ 					++mInSendFromQueue;
+-					mIoService.reset();
++					mIoService.restart();
+ 					mIoService.poll();
+ 					--mInSendFromQueue;
+ 				}
+diff --git a/simulator/sim_lib/utils.cpp b/simulator/sim_lib/utils.cpp
+index 84e6ea1..38bdf41 100644
+--- a/simulator/sim_lib/utils.cpp
++++ b/simulator/sim_lib/utils.cpp
+@@ -57,6 +57,12 @@ void SetThreadAffinity(size_t aCpuId) {
+ 	if (RetVal == 0) throw Generic_x() << "Error calling SetThreadAffinityMask: " << HexPrinter(GetLastError());
+ }
+ 
++#elif defined(__APPLE__) || defined(__EMSCRIPTEN__)
++
++// No CPU affinity API on these hosts (loom port): a no-op, the scheduler decides.
++void SetThreadAffinity(std::thread &aThread, size_t aCpuId) { (void)aThread; (void)aCpuId; }
++void SetThreadAffinity(size_t aCpuId) { (void)aCpuId; }
++
+ #else
+ 
+ #include <pthread.h>
