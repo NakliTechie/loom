@@ -1,9 +1,10 @@
 // Loom main thread: the disk, the console, and one run at a time on a Worker.
 import { untar } from "./tar.js";
+import { Fabric, parseMap } from "./fabric.js";
 
 const $ = (id) => document.getElementById(id);
 const disk = new Map();          // path -> Uint8Array   (/work/... user files, /d7205/... toolset)
-let selected = null, worker = null, keysSab = null, keyRing = null, running = false;
+let selected = null, keysSab = null, keyRing = null, running = false;
 const runs = [];
 
 // ---------- keyboard ring (SharedArrayBuffer, only when cross-origin isolated) ----------
@@ -95,47 +96,76 @@ $("delete").onclick = () => { disk.delete(selected); selected = null; renderFile
 const ENV = { D7205: "/d7205", ISEARCH: "/d7205/libs/", IBOARDSIZE: "#200000", ITERM: "/d7205/iterms/ansi.itm" };
 function setState(s) { $("state").dataset.s = s; $("state").textContent = s; }
 
+let fabric = null;
+function workerNode() {
+  const w = new Worker("node-worker.js", { type: "module" });
+  let seq = 0; const waiting = new Map();
+  w.onmessage = (e) => { const { id, ...rest } = e.data; const r = waiting.get(id); if (r) { waiting.delete(id); r(rest); } };
+  return { w, call: (m) => new Promise((res) => { const id = ++seq; waiting.set(id, res); w.postMessage({ id, ...m }); }) };
+}
 function runOnce(args, { label } = {}) {
+  // args: t4 command line for node 0. If <stem>.map exists beside the bootable and names more than one
+  // processor, the run is a fabric of that many nodes; otherwise a single node.
   return new Promise((resolve) => {
     running = true; renderFiles(); setState("running"); $("stop").disabled = false;
     $("k-boot").textContent = label || args.join(" ");
     $("k-halt").textContent = "—";
-    print(`\n$ t4 ${args.join(" ")}\n`, "sys");
-    const files = {};
-    for (const [p, b] of disk) files[p] = b;
-    worker = new Worker("worker.js");
+    const btl = args[args.length - 1], stem = btl.replace(/\.[^.]+$/, "");
+    const mapName = `${stem}.map`;
+    const mapText = disk.has(`/work/${mapName}`) ? new TextDecoder().decode(disk.get(`/work/${mapName}`)) : "";
+    const topo = mapText ? parseMap(mapText) : { nodes: 1, links: [] };
+    const multi = topo.nodes > 1;
+    print(`\n$ t4 ${args.join(" ")}${multi ? `   (${topo.nodes} nodes, ${topo.links.length} links, from ${mapName})` : ""}\n`, "sys");
+    const files = {}; for (const [p, b] of disk) files[p] = b;
+    const nodes = Array.from({ length: topo.nodes }, workerNode);
     const t0 = performance.now();
-    worker.onmessage = (e) => {
-      const m = e.data;
-      if (m.type === "out") print(m.text);
-      else if (m.type === "tick") {
-        $("instr").textContent = fmt(m.instr); $("vtime").textContent = fmtUs(m.usec);
-        $("k-instr").textContent = fmt(m.instr); $("k-vt").textContent = fmtUs(m.usec);
-        $("k-ht").textContent = (m.ms / 1000).toFixed(2) + " s";
-        $("mips").textContent = (m.instr / m.ms / 1000).toFixed(1) + " MIPS";
-      } else if (m.type === "halted") {
-        const why = { 1: "server exit", 2: "error flag", 3: "stopped" }[m.reason] || `reason ${m.reason}`;
-        $("k-halt").textContent = why;
-        for (const [p, b] of Object.entries(m.files)) disk.set(p, new Uint8Array(b));
-        worker.terminate(); worker = null; running = false; setState("halted"); $("stop").disabled = true;
-        const rec = { args, instr: m.instr, ms: m.ms, why };
-        runs.unshift(rec); renderRuns();
-        print(`[${why} · ${fmt(m.instr)} instr · ${fmtUs(m.instr / 10)} virtual · ${(m.ms / 1000).toFixed(2)} s host]\n`, "sys");
-        renderFiles(); resolve(rec);
-      }
-    };
-    worker.postMessage({ type: "boot", files, args, env: ENV, cwd: "/work", keys: keysSab });
+    let lastPaint = 0;
+    fabric = new Fabric(nodes, {
+      quantum: multi ? 50_000 : 2_000_000,
+      onOut: (i, text) => print(multi && i > 0 ? text.replace(/^/gm, `[${i}] `) : text, i < 0 ? "sys" : ""),
+      onLink: (link, bytes, k) => topoPulse(link, bytes, k),
+      onTick: (k, vt) => {
+        const now = performance.now();
+        if (now - lastPaint < 60) return;
+        lastPaint = now;
+        const instr = vt; // every node's clock is at vt after a quantum
+        $("instr").textContent = fmt(instr); $("vtime").textContent = fmtUs(instr / 10);
+        $("k-instr").textContent = fmt(instr); $("k-vt").textContent = fmtUs(instr / 10);
+        $("k-ht").textContent = ((now - t0) / 1000).toFixed(2) + " s";
+        $("mips").textContent = (instr * topo.nodes / (now - t0) / 1000).toFixed(1) + " MIPS";
+        $("k-msgs").textContent = `${fmt(fabric.stats.msgs)} · ${fmt(fabric.stats.bytes)} B`;
+        topoPaint(k);
+      },
+    });
+    topoInit(topo);
+    fabric.start(topo, (i) => ({
+      files, env: { ...ENV, ...(multi ? { SPYNET: mapName } : {}) }, cwd: "/work", keyRing: i === 0 ? keysSab : null,
+      args: multi ? (i === 0 ? ["-s8", "-sl", "-sn", "0", ...args] : ["-s8", "-sl", "-sn", String(i)]) : args,
+    })).then(async () => {
+      const r = await nodes[0].call({ type: "finish" });
+      for (const [p, b] of Object.entries(r.files)) disk.set(p, new Uint8Array(b));
+      for (const nd of nodes) nd.w.terminate();
+      const halted = fabric.haltReason || 0;
+      const why = fabric.stopped && fabric.userStopped ? "stopped" : { 1: "server exit", 2: "error flag" }[halted] || (fabric.idleStreak > 200 ? "deadlock: all idle" : "halted");
+      const ms = performance.now() - t0, instr = fabric.k * fabric.Q;
+      $("k-halt").textContent = why; running = false; setState("halted"); $("stop").disabled = true;
+      const rec = { args, instr, ms, why, nodes: topo.nodes, msgs: fabric.stats.msgs, bytes: fabric.stats.bytes };
+      runs.unshift(rec); renderRuns();
+      print(`[${why} · ${fmt(instr)} instr per node · ${fmtUs(instr / 10)} virtual · ${(ms / 1000).toFixed(2)} s host${multi ? ` · ${fmt(fabric.stats.msgs)} messages, ${fmt(fabric.stats.bytes)} B on links` : ""}]\n`, "sys");
+      topoPaint(fabric.k, true);
+      fabric = null; renderFiles(); resolve(rec);
+    });
   });
 }
 function renderRuns() {
   const el = $("runs"); el.innerHTML = "";
   for (const r of runs.slice(0, 40)) {
     const d = document.createElement("div"); d.className = "run";
-    d.innerHTML = `<div class="cmd">t4 ${r.args.join(" ")}</div><div class="n">${fmt(r.instr)} instr · ${fmtUs(r.instr / 10)} · ${(r.ms / 1000).toFixed(2)} s · ${r.why}</div>`;
+    d.innerHTML = `<div class="cmd">t4 ${r.args.join(" ")}${r.nodes > 1 ? ` × ${r.nodes}` : ""}</div><div class="n">${fmt(r.instr)} instr · ${fmtUs(r.instr / 10)} · ${(r.ms / 1000).toFixed(2)} s · ${r.why}${r.nodes > 1 ? ` · ${fmt(r.msgs)} msgs` : ""}</div>`;
     el.appendChild(d);
   }
 }
-$("stop").onclick = () => { if (worker) worker.postMessage({ type: "stop" }); };
+$("stop").onclick = () => { if (fabric) { fabric.userStopped = true; fabric.stop(); } };
 $("run").onclick = () => runOnce(["-s8", "-se", "-sb", selected.slice(6)]);
 async function build() {
   const stem = selected.slice(6).replace(/\.occ$/, "");
@@ -160,6 +190,45 @@ async function build() {
 $("build").onclick = build;
 
 renderFiles();
+
+// ---------- topology view: nodes on a circle, links as chords, activity as recent bytes ----------
+let topoState = null;
+function topoInit(topo) {
+  const svg = $("topo"); svg.innerHTML = "";
+  const n = topo.nodes, W = 276, H = Math.max(160, Math.min(276, 40 + n * 6)), cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 22;
+  const pos = (i) => n === 1 ? [cx, cy] : [cx + R * Math.cos(-Math.PI / 2 + 2 * Math.PI * i / n), cy + R * Math.sin(-Math.PI / 2 + 2 * Math.PI * i / n)];
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const NS = "http://www.w3.org/2000/svg", el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const links = new Map();
+  for (const { a, x, b, y } of topo.links) {
+    const [x1, y1] = pos(a), [x2, y2] = pos(b);
+    const line = el("line", { x1, y1, x2, y2, class: "lk" }); svg.appendChild(line);
+    links.set(`${a}.${x}→${b}.${y}`, { line, bytes: 0, last: -1 }); links.set(`${b}.${y}→${a}.${x}`, { line, bytes: 0, last: -1 });
+  }
+  const nodesEl = [];
+  for (let i = 0; i < n; i++) {
+    const [x, y] = pos(i);
+    const g = el("g", { class: "nd" });
+    g.appendChild(el("circle", { cx: x, cy: y, r: n > 24 ? 5 : 9 }));
+    if (n <= 24) { const t = el("text", { x, y: y + 3.5, "text-anchor": "middle" }); t.textContent = i; g.appendChild(t); }
+    svg.appendChild(g); nodesEl.push(g);
+  }
+  $("nodes").textContent = String(n);
+  topoState = { links, nodesEl, k: 0 };
+  $("linkstats").innerHTML = "";
+}
+function topoPulse(link, bytes, k) { const l = topoState?.links.get(link); if (l) { l.bytes += bytes; l.last = k; } }
+function topoPaint(k, final = false) {
+  if (!topoState) return;
+  const seen = new Set();
+  for (const [name, l] of topoState.links) {
+    if (seen.has(l.line)) continue; seen.add(l.line);
+    const hot = !final && k - l.last < 4;
+    l.line.classList.toggle("hot", hot);
+  }
+  const rows = [...topoState.links.entries()].filter(([, l]) => l.bytes > 0).sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 12);
+  $("linkstats").innerHTML = rows.map(([name, l]) => `<div><span>${name}</span><span class="n">${fmt(l.bytes)} B</span></div>`).join("");
+}
 
 // ---------- first paint: precomputed traces, so the page says something before any file is dropped ----------
 fetch("traces/index.json").then((r) => r.json()).then((t) => {

@@ -60,7 +60,7 @@ export class Fabric {
           if (!rt) continue;
           this.pending.push({ to: rt.to, slot: rt.slot, bytes: o.bytes, from: i, fromSlot: o.slot, link: rt.link });
         }
-        if (r.halted) { anyHalt = true; this.onHalt?.(i, r); }
+        if (r.halted) { anyHalt = true; this.haltReason = r.halted; this.onHalt?.(i, r); }
         if (!r.idle) allIdle = false;
       }
       // deliver what fits; a message leaves the sender's mirror only once accepted

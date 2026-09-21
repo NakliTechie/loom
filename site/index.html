@@ -57,6 +57,13 @@ button:disabled { opacity: 0.4; cursor: default; }
 .run .cmd { color: var(--i70); }
 .run .n { font-variant-numeric: tabular-nums; }
 footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size: 11px; }
+.topo { display: block; width: 100%; max-height: 200px; padding: 6px 12px 2px; }
+.topo .lk { stroke: var(--i30); stroke-width: 1.2; transition: stroke 120ms; }
+.topo .lk.hot { stroke: var(--accent); stroke-width: 2; }
+.topo .nd circle { fill: var(--canvas); stroke: var(--i70); stroke-width: 1.2; }
+.topo .nd text { font: 9px var(--mono); fill: var(--i70); }
+.linkstats { padding: 0 12px 6px; color: var(--i70); font-size: 11px; max-height: 96px; overflow: auto; }
+.linkstats div { display: flex; justify-content: space-between; }
 .help { padding: 8px 12px; color: var(--i70); border-top: 1px solid var(--i08); }
 .help p { margin: 0 0 6px; }
 .help kbd { border: 1px solid var(--i30); padding: 0 4px; }
@@ -66,7 +73,7 @@ footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size
 <body>
 <header>
   <h1>LOOM</h1>
-  <span class="stat">T800 · <b id="nodes">1</b> node · virtual clock</span>
+  <span class="stat">T800 × <b id="nodes">1</b> · virtual clock</span>
   <span class="state" id="state" data-s="idle">idle</span>
   <span class="stat">instr <b id="instr">0</b></span>
   <span class="stat">t <b id="vtime">0 µs</b></span>
@@ -93,19 +100,23 @@ footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size
     <div class="input"><input id="stdin" placeholder="keys go to the transputer while it runs (needs cross-origin isolation)" autocomplete="off"></div>
   </section>
   <section>
+    <h2>FABRIC</h2>
+    <svg id="topo" class="topo" viewBox="0 0 276 160" aria-label="topology"></svg>
+    <div class="linkstats" id="linkstats"></div>
     <h2>RUN</h2>
     <dl class="kv">
       <dt>boot</dt><dd id="k-boot">—</dd>
-      <dt>instructions</dt><dd id="k-instr">—</dd>
+      <dt>instructions / node</dt><dd id="k-instr">—</dd>
       <dt>virtual time</dt><dd id="k-vt">—</dd>
       <dt>host time</dt><dd id="k-ht">—</dd>
+      <dt>link traffic</dt><dd id="k-msgs">—</dd>
       <dt>halt</dt><dd id="k-halt">—</dd>
       <dt>keyboard</dt><dd id="k-kbd">—</dd>
     </dl>
     <h2>LOG</h2>
     <div class="runs" id="runs"></div>
     <div class="help">
-      <p>One INMOS T800 emulated by pahihu's t4, compiled to WebAssembly, in a Worker. Time is virtual: 10 instructions per microsecond, every run deterministic.</p>
+      <p>INMOS T800s emulated by pahihu's t4, compiled to WebAssembly, one per Worker, in lockstep on one virtual clock (10 instructions per microsecond; link messages move at quantum barriers), so every run is deterministic. Drop a configured bootable with its <code>.map</code> and the fabric wires itself to match.</p>
       <p>The 1990 occam 2 toolset (D7205A) runs inside the transputer. It is not shipped here — see <a href="https://github.com/NakliTechie/loom/blob/main/LICENSING.md">why</a>. Drop your copy of <code>d7205a.tar.gz</code> and <b>build</b> compiles, links, configures and collects an <code>.occ</code> into a bootable.</p>
       <p>This product includes software developed by Julian Highfield.</p>
     </div>
