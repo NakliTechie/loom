@@ -56,7 +56,6 @@ function renderFiles() {
   $("build").disabled = running || !(selected && selected.endsWith(".occ") && hasTools);
   $("download").disabled = !selected;
   $("delete").disabled = running || !selected;
-  $("nodes").textContent = "1";
 }
 async function addFile(name, bytes) {
   if (/\.(tar\.gz|tgz|tar)$/i.test(name)) {
@@ -96,11 +95,31 @@ $("delete").onclick = () => { disk.delete(selected); selected = null; renderFile
 const ENV = { D7205: "/d7205", ISEARCH: "/d7205/libs/", IBOARDSIZE: "#200000", ITERM: "/d7205/iterms/ansi.itm" };
 function setState(s) { $("state").dataset.s = s; $("state").textContent = s; }
 
-let fabric = null;
+let fabric = null, autoKeys = null;
+function showImage() {
+  // ray.mtv: "W H\n" then RGB bytes — the raytracer's output format
+  const b = disk.get("/work/ray.mtv"); const c = $("image");
+  if (!b) { c.classList.remove("shown"); return; }
+  const hdr = new TextDecoder().decode(b.subarray(0, 16)), m = hdr.match(/^(\d+) (\d+)\n/);
+  if (!m) return;
+  const w = +m[1], h = +m[2], off = m[0].length, ctx = c.getContext("2d"), img = ctx.createImageData(w, h);
+  c.width = w; c.height = h;
+  for (let i = 0, j = off; i < w * h; i++, j += 3) { img.data[4 * i] = b[j]; img.data[4 * i + 1] = b[j + 1]; img.data[4 * i + 2] = b[j + 2]; img.data[4 * i + 3] = 255; }
+  ctx.putImageData(img, 0, 0); c.classList.add("shown");
+}
+async function demo(n) {
+  if (running) return;
+  for (const ext of ["btl", "map"]) if (!disk.has(`/work/raytrace${n}.${ext}`)) await addFile(`raytrace${n}.${ext}`, new Uint8Array(await (await fetch(`demo/raytrace${n}.${ext}`)).arrayBuffer()));
+  disk.delete("/work/ray.mtv"); $("image").classList.remove("shown");
+  autoKeys = "1\n";
+  selected = `/work/raytrace${n}.btl`; renderFiles();
+  return runOnce(["-s8", "-se", "-sb", `raytrace${n}.btl`], { label: `raytracer × ${n}` });
+}
+for (const b of document.querySelectorAll("#demo button")) b.onclick = () => demo(+b.dataset.n);
 function workerNode() {
   const w = new Worker("node-worker.js", { type: "module" });
   let seq = 0; const waiting = new Map();
-  w.onmessage = (e) => { const { id, ...rest } = e.data; const r = waiting.get(id); if (r) { waiting.delete(id); r(rest); } };
+  w.onmessage = (e) => { const { id, partial, ...rest } = e.data; if (partial) { print(rest.out); if (autoKeys && /Your Selection/.test(rest.out)) { const k = autoKeys; autoKeys = null; for (const ch of k) pushKey(ch.charCodeAt(0)); print(`[auto-typed "${k.replace("\n", "⏎")}" to the menu]\n`, "sys"); } return; } const r = waiting.get(id); if (r) { waiting.delete(id); r(rest); } };
   return { w, call: (m) => new Promise((res) => { const id = ++seq; waiting.set(id, res); w.postMessage({ id, ...m }); }) };
 }
 function runOnce(args, { label } = {}) {
@@ -122,7 +141,10 @@ function runOnce(args, { label } = {}) {
     let lastPaint = 0;
     fabric = new Fabric(nodes, {
       quantum: multi ? 50_000 : 2_000_000,
-      onOut: (i, text) => print(multi && i > 0 ? text.replace(/^/gm, `[${i}] `) : text, i < 0 ? "sys" : ""),
+      onOut: (i, text) => {
+        print(multi && i > 0 ? text.replace(/^/gm, `[${i}] `) : text, i < 0 ? "sys" : "");
+        if (autoKeys && /Your Selection/.test(text)) { const k = autoKeys; autoKeys = null; setTimeout(() => { for (const ch of k) pushKey(ch.charCodeAt(0)); print(`[auto-typed "${k.replace("\n", "⏎")}" to the menu]\n`, "sys"); }, 0); }
+      },
       onLink: (link, bytes, k) => topoPulse(link, bytes, k),
       onTick: (k, vt) => {
         const now = performance.now();
@@ -153,6 +175,7 @@ function runOnce(args, { label } = {}) {
       runs.unshift(rec); renderRuns();
       print(`[${why} · ${fmt(instr)} instr per node · ${fmtUs(instr / 10)} virtual · ${(ms / 1000).toFixed(2)} s host${multi ? ` · ${fmt(fabric.stats.msgs)} messages, ${fmt(fabric.stats.bytes)} B on links` : ""}]\n`, "sys");
       topoPaint(fabric.k, true);
+      showImage();
       fabric = null; renderFiles(); resolve(rec);
     });
   });
@@ -239,6 +262,7 @@ fetch("traces/index.json").then((r) => r.json()).then((t) => {
     print(`[${tr.halt} · ${fmt(tr.instr)} instr · ${fmtUs(tr.instr / 10)} virtual]\n`, "sys");
   }
   print(`\nDrop a .btl to run it here, or the D7205A toolset plus a .occ to build one.\n`, "sys");
+  if ((navigator.hardwareConcurrency || 2) >= 6 && !location.hash.includes("noauto")) { print(`\nStarting the raytracer on 6 transputers (add #noauto to the URL to skip).\n`, "sys"); demo(6); }
 }).catch(() => {});
 renderFiles();
 
@@ -253,5 +277,6 @@ self.loom = {
   text: (path) => new TextDecoder().decode(disk.get(path)),
   console: () => con.textContent,
   keys: (text) => { for (const ch of text) pushKey(ch.charCodeAt(0)); },
+  demo,
   stop: () => $("stop").onclick(),
 };

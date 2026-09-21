@@ -5,7 +5,8 @@
 //   quantum  {budget, vt, nslots, deliver:{inbox:[{slot,bytes}], clear:[slot]}}
 //            -> {instr, ran, idle, halted, out, outs:[{slot,bytes}], freed:[slot]}
 //   finish   {}                                                   -> {out, files}
-export function makeNode(createT4) {
+export function makeNode(createT4, emit = null) {
+  // emit(text): deliver console output immediately, used before blocking on the keyboard so a prompt is visible
   let mod, FS, SCH = 1024, base = 0, pending = "";
   const full = new Set();          // slots I currently hold: my inboxes with an unread message, my outbox mirrors awaiting forward
   const addr = (s) => base + s * SCH;
@@ -31,7 +32,7 @@ export function makeNode(createT4) {
             const q = [...(m.keys || "")].map((c) => c.charCodeAt(0));
             const ring = m.keyRing ? new Int32Array(m.keyRing) : null;
             const ringHas = () => ring && Atomics.load(ring, 0) !== Atomics.load(ring, 1);
-            const ringGet = () => { for (;;) { const h = Atomics.load(ring, 0), t = Atomics.load(ring, 1); if (h !== t) { const v = ring[2 + (h % (ring.length - 2))]; Atomics.store(ring, 0, h + 1); return v; } Atomics.wait(ring, 1, t); } };
+            const ringGet = () => { for (;;) { const h = Atomics.load(ring, 0), t = Atomics.load(ring, 1); if (h !== t) { const v = ring[2 + (h % (ring.length - 2))]; Atomics.store(ring, 0, h + 1); return v; } if (emit && pending) { emit(pending); pending = ""; } Atomics.wait(ring, 1, t); } };
             M.loomHasKey = () => q.length > 0 || ringHas();
             M.loomGetKey = () => (q.length ? q.shift() : ring ? ringGet() : -1);
           }],

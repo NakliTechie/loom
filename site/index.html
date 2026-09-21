@@ -27,7 +27,7 @@ header .stat b { color: var(--i100); font-weight: 500; font-variant-numeric: tab
 header .state { padding: 1px 6px; border: 1px solid var(--i30); }
 header .state[data-s="running"] { border-color: var(--accent); color: var(--accent); }
 header .spacer { flex: 1; }
-main { display: grid; grid-template-columns: 240px 1fr 320px; grid-template-rows: 1fr; height: calc(100% - 38px); }
+main { display: grid; grid-template-columns: 240px 1fr 320px; grid-template-rows: 1fr; height: calc(100% - 38px - 34px); }
 section { border-right: 1px solid var(--i15); display: flex; flex-direction: column; min-height: 0; }
 section:last-child { border-right: 0; }
 h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--i50); margin: 0; padding: 8px 12px 6px; border-bottom: 1px solid var(--i08); }
@@ -57,6 +57,11 @@ button:disabled { opacity: 0.4; cursor: default; }
 .run .cmd { color: var(--i70); }
 .run .n { font-variant-numeric: tabular-nums; }
 footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size: 11px; }
+.demo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--i15); color: var(--i70); }
+.demo button { border-color: var(--accent); color: var(--accent); }
+.demo .hint { color: var(--i50); }
+.image { display: none; flex: 0 0 auto; width: 128px; height: 128px; margin: 0 12px 6px; image-rendering: pixelated; border: 1px solid var(--i15); }
+.image.shown { display: block; }
 .topo { display: block; flex: 0 0 auto; width: 100%; height: 170px; padding: 6px 12px 2px; }
 .topo .lk { stroke: var(--i30); stroke-width: 1.2; transition: stroke 120ms; }
 .topo .lk.hot { stroke: var(--accent); stroke-width: 2; }
@@ -79,8 +84,15 @@ footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size
   <span class="stat">t <b id="vtime">0 µs</b></span>
   <span class="stat">host <b id="mips">—</b></span>
   <span class="spacer"></span>
-  <span class="stat"><a href="https://param.naklitechie.com">param</a> · <a href="https://github.com/NakliTechie/loom">source</a> · v1.0</span>
+  <span class="stat"><a href="/piece/">the piece</a> · <a href="https://github.com/NakliTechie/loom">source</a> · v1.1</span>
 </header>
+<div class="demo" id="demo">
+  <span>1990 INMOS occam raytracer, compiled by the period toolset, on</span>
+  <button data-n="6">6 transputers</button>
+  <button data-n="18">18 transputers</button>
+  <button data-n="64">64 transputers</button>
+  <span class="hint" id="demo-hint">— every run is deterministic; the image is identical at every size</span>
+</div>
 <main>
   <section>
     <h2>DISK</h2>
@@ -102,6 +114,7 @@ footer { position: fixed; right: 12px; bottom: 6px; color: var(--i30); font-size
   <section>
     <h2>FABRIC</h2>
     <svg id="topo" class="topo" viewBox="0 0 276 160" aria-label="topology"></svg>
+    <canvas id="image" class="image" width="256" height="256" hidden></canvas>
     <div class="linkstats" id="linkstats"></div>
     <h2>RUN</h2>
     <dl class="kv">
