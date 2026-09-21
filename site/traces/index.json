@@ -1,0 +1,26 @@
+{
+ "clock": "10 instructions per microsecond",
+ "traces": [
+  {
+   "program": "hello.occ \u2192 hello.btl",
+   "note": "compiled by the D7205A occam 2 toolset running inside this emulator, then run; 3,577 instructions",
+   "output": "Hello world...\n",
+   "instr": 3577,
+   "halt": "server exit"
+  },
+  {
+   "program": "savage.b8h",
+   "output": "Savage benchmark...\n   a = 2500.0000000011773400\ndiff = -1.1773408914450556e-09\n",
+   "instr": 1864091,
+   "halt": "server exit",
+   "note": "Savage benchmark (occam, T800 FPU), output identical to the native t4 build"
+  },
+  {
+   "program": "whetstond.btl",
+   "output": "Whetstone benchmark results\u0000\n\u0000\nUsage: iserver /sb whetston.btl n\u0000\n       where n is number of interrupts/sec\u0000\nModule :1 = 0.0 mS\u0000\nModule :2 = 0.5 mS\u0000\nModule :3 = 5.2 mS\u0000\nModule :4 = 5.2 mS\u0000\nModule :5 = 0.0 mS\u0000\nModule :6 = 10.5 mS\u0000\nModule :7 = 39.6 mS\u0000\nModule :8 = 32.3 mS\u0000\nModule :9 = 33.3 mS\u0000\nModule :10 = 0.0 mS\u0000\nModule :11 = 30.8 mS\u0000\n\u0000\nTotal time = 157.4 mS\u0000\n  6353 KWhetstones at 10 interrupts/sec\u0000\n",
+   "instr": 4715978,
+   "halt": "server exit",
+   "note": "Whetstone, double length, occam; timings are on the virtual clock (10 instr/\u00b5s), so they are the same on every machine"
+  }
+ ]
+}

@@ -1,1 +1,0 @@
-{"program": "hello.occ → hello.btl", "note": "compiled by the D7205A occam 2 toolset running inside this emulator, then run; 3,577 instructions", "output": "Hello world...\n", "instr": 3577, "halt": "server exit"}
