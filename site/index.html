@@ -27,9 +27,29 @@ button:hover { border-color: var(--i70); }
 button.primary { border-color: var(--accent); color: var(--accent); }
 button:disabled { opacity: 0.4; cursor: default; }
 
+/* ---------- nav + tabs ---------- */
+.nav { position: sticky; top: 0; z-index: 5; display: flex; align-items: baseline; gap: 18px; padding: 10px 16px; background: var(--canvas); border-bottom: 1px solid var(--i15); font: 12.5px var(--mono); }
+.nav a { color: var(--i70); text-decoration: none; padding: 2px 0; border-bottom: 1px solid transparent; }
+.nav a.brand { color: var(--i100); font-weight: 600; letter-spacing: 0.08em; }
+.nav a.on { color: var(--i100); border-bottom-color: var(--accent); }
+.nav .spacer { flex: 1; } .nav .live { color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.tab { display: none; } .tab.on { display: block; }
+.story .next { margin-top: 2.5rem; font: 13px var(--mono); }
+.result { margin: 1.4rem 0 0; border: 1px solid var(--i15); font: 12.5px/1.45 var(--mono); }
+.result-head { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--i08); }
+.result-head .spacer { flex: 1; } .result-head a { color: var(--i50); font-size: 11px; }
+.r-status { color: var(--i70); } .r-status.running { color: var(--accent); }
+.r-out { margin: 0; padding: 10px 12px; max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+.r-image { display: none; width: 256px; height: 256px; margin: 12px; image-rendering: pixelated; border: 1px solid var(--i15); }
+.r-image.shown { display: block; }
+.r-input { border-top: 1px solid var(--i08); } .r-input input { width: 100%; font: inherit; color: var(--i100); background: transparent; border: 0; padding: 7px 12px; outline: 0; }
+.r-input input::placeholder { color: var(--i30); }
+.r-stats { padding: 8px 12px; color: var(--i50); border-top: 1px solid var(--i08); font-size: 11px; }
+.programs .card button { border-color: var(--accent); color: var(--accent); }
+
 /* ---------- story (reading) ---------- */
 .story { font: 18px/1.55 var(--serif); padding: 0 16px; }
-.story .wrap { max-width: var(--measure); margin: 0 auto; padding: 4rem 0 3rem; }
+.story .wrap { max-width: var(--measure); margin: 0 auto; padding: 3rem 0 3rem; }
 .story h1 { font-size: 3.4rem; line-height: 1; font-weight: 500; letter-spacing: 0.02em; margin: 0 0 0.6rem; }
 .story .dek { font-size: 1.25rem; color: var(--i70); margin: 0 0 0.6rem; }
 .story .byline { font: 0.75rem/1.5 var(--mono); color: var(--i50); margin: 0 0 2.5rem; }
@@ -119,12 +139,23 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
 </head>
 <body>
 
-<div class="story">
+<nav class="nav" id="nav">
+  <a class="brand" href="#history">PARAM</a>
+  <a href="#history" data-tab="history">History</a>
+  <a href="#machine" data-tab="machine">The machine</a>
+  <a href="#numbers" data-tab="numbers">Numbers</a>
+  <a href="#chart" data-tab="chart">The line</a>
+  <a href="#workbench" data-tab="workbench">Workbench</a>
+  <span class="spacer"></span>
+  <span class="live" id="nav-live"></span>
+</nav>
+
+<div class="tab story" id="tab-history">
 <div class="wrap">
 <header>
   <h1>PARAM</h1>
   <p class="dek">A 64-transputer supercomputer, built in India in 1991 because a Cray was refused. This page runs one.</p>
-  <p class="byline">Chirag Patnaik · September 2026 · <a href="/piece/">the long essay</a> · <a href="https://github.com/NakliTechie/loom">source</a> · <a href="#workbench">skip to the machine</a></p>
+  <p class="byline">Chirag Patnaik · September 2026 · <a href="/piece/">the long essay</a> · <a href="https://github.com/NakliTechie/loom">source</a></p>
 </header>
 
 <h2>1987 <small>THE REFUSAL</small></h2>
@@ -133,33 +164,63 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
 
 <h2>1991 <small>THE MACHINE THEY BUILT</small></h2>
 <p>C-DAC was set up in Pune in 1988. Its first machine, PARAM 8000, was delivered as a 64-node system in August 1991. Each node was an INMOS transputer: a 32-bit microprocessor with a 64-bit floating-point unit, 4 KB of memory and four serial links on one chip, designed to be wired to other transputers and programmed in occam, a language where processes talk only through channels. PARAM wired 64 of them through a reconfigurable switch, so the topology was whatever the program asked for.<a href="/piece/#n7" class="n">[3]</a></p>
-<figure class="wide">
-  <svg id="machine" class="machine" viewBox="0 0 900 300" role="img" aria-label="Schematic of a 64-transputer PARAM 8000: an 8 by 8 array of T800 nodes, a host card, and a link switch. Nodes light while they run in the emulation below."></svg>
-  <figcaption>Schematic, not a photograph: 64 T800 nodes, a host card, a link switch. When the machine below is running, the nodes that are computing light up and the links carrying traffic glow. <span id="machine-status">Idle.</span></figcaption>
-</figure>
 <p>A single 20 MHz T800 managed <span class="n">0.37 MFLOPS</span> on LINPACK 100 in double precision, per Dongarra's table; INMOS quoted <span class="n">1.5 MFLOPS</span> on Livermore Loop 7 in single precision.<a href="/piece/#n8" class="n">[4]</a> Sixty-four of them, if none ever waited for another, would reach about 24 MFLOPS on that test — less than half of one Cray CPU. C-DAC's own figure for a 256-node machine was 1 GFLOPS theoretical and 100 to 200 MFLOPS sustained.<a href="/piece/#n9" class="n">[5]</a> The machine sold anyway, at around $350,000, to buyers that included Germany, the United Kingdom and Russia.<a href="/piece/#n11" class="n">[6]</a></p>
 
+<p class="next"><a href="#machine" data-tab="machine">Next: the machine, running →</a></p>
+</div>
+</div>
+
+<div class="tab story" id="tab-numbers">
+<div class="wrap">
 <h2>How fast, exactly <small>MEASURED</small></h2>
 <p>These are the numbers, FP64 unless marked, from published period tables and from this laptop (Apple M4 Pro) running the same reference kernels under the same rules. Every cell is either measured here, published with a citation, or reconstructed and labelled. Method and sources: <a href="https://github.com/NakliTechie/param-fp64">param-fp64</a>.</p>
 <figure id="bench-figure"><div id="bench"></div></figure>
 <p class="small">One M4 Pro core against one T800-20 on LINPACK 100 is a factor of about forty-two thousand; against one X-MP/14se CPU, about three hundred.</p>
 
+<p class="next"><a href="#chart" data-tab="chart">Next: the line and the shelf →</a></p>
+</div>
+</div>
+
+<div class="tab story" id="tab-chart">
+<div class="wrap">
 <h2>The line and the shelf <small>1987–2026</small></h2>
 <p>Every performance threshold the US has written into computer export controls since 1992, converted to FP64, against the fastest FP64 box a person could buy that year. India is on the chart twice. The conversion is a device and the essay says so before drawing it; the short version is that the consumer shelf stopped climbing in FP64 around 2019, and in the unit the 2022 chip rules use, a gaming card was over the line before the line was drawn.</p>
 <figure class="wide"><div id="chart"></div><figcaption>From <a href="/piece/">the essay</a>, which carries the 22 sources.</figcaption></figure>
 
-<h2>Now run it <small>THE EMULATION</small></h2>
-<p>Below is a PARAM 8000 in this tab. Each node is INMOS T800 emulated by <a href="https://github.com/pahihu/t4">t4</a>, compiled to WebAssembly and run in its own Worker, all of them in lockstep on one virtual clock at ten instructions per microsecond. Time on the machine is therefore the same on every computer that opens this page, and every run gives the same bytes. The programs are real transputer binaries produced by INMOS's 1990 occam toolset — the compiler itself runs inside the emulated transputer, and you can use it if you have the toolset image.</p>
-<div class="programs">
-  <div class="card"><h3>Hello</h3><p>The smallest program: one transputer, one line. 3,578 instructions.</p><div class="row"><button data-prog="hello">run on 1</button></div></div>
-  <div class="card"><h3>Whetstone, double precision</h3><p>The 1970s floating-point benchmark, in occam, on one T800. Timings are on the virtual clock.</p><div class="row"><button data-prog="whetstone">run on 1</button></div></div>
-  <div class="card"><h3>INMOS raytracer, 1990</h3><p>A farm: one node collects the image, one hands out work, the rest trace rays. The image is identical whatever the node count.</p><div class="row"><button data-prog="ray" data-n="6">6 nodes</button><button data-prog="ray" data-n="18">18</button><button data-prog="ray" data-n="64">64</button></div></div>
-</div>
-<div class="boot"><button class="primary" id="boot64">Boot 64 transputers and trace the image</button><span>about a minute on a laptop; the machine above lights up as it works</span></div>
+<p class="next"><a href="/piece/">Read the full essay →</a></p>
 </div>
 </div>
 
-<div class="bench" id="workbench">
+<div class="tab story" id="tab-machine">
+<div class="wrap">
+<h2>The machine <small>PARAM 8000 · EMULATED</small></h2>
+<p>Sixty-four INMOS T800s, each emulated by <a href="https://github.com/pahihu/t4">t4</a> compiled to WebAssembly in its own Worker, run in lockstep on one virtual clock at ten instructions per microsecond. Time on this machine is the same on every computer that opens the page, and every run produces the same bytes. The programs are real transputer binaries from the period, most of them produced by INMOS's 1990 occam toolset. Pick one; the nodes light as they work; the result appears underneath.</p>
+</div>
+<figure class="wide">
+  <svg id="machine" class="machine" viewBox="0 0 900 300" role="img" aria-label="Schematic of a 64-transputer PARAM 8000: an 8 by 8 array of T800 nodes, a host card, and a link switch. Nodes light while they run."></svg>
+  <figcaption>Schematic, not a photograph: 64 T800 nodes, a host card, a link switch. <span id="machine-status">Idle.</span></figcaption>
+</figure>
+<div class="wrap">
+<div class="programs">
+  <div class="card"><h3>Hello, world</h3><p>One transputer, one line of occam. 3,578 instructions.</p><div class="row"><button data-prog="hello">run</button></div></div>
+  <div class="card"><h3>Primes to 2,000</h3><p>Sieve of Eratosthenes, occam, one node. It asks for a number; the page types 2000.</p><div class="row"><button data-prog="prime">run</button></div></div>
+  <div class="card"><h3>Knight's tour, 6×6</h3><p>Backtracking search for a knight's path over every square, from (1,1).</p><div class="row"><button data-prog="knight">run</button></div></div>
+  <div class="card"><h3>Whetstone, double precision</h3><p>The 1970s floating-point benchmark on one T800 FPU. Timings are on the virtual clock.</p><div class="row"><button data-prog="whetstone">run</button></div></div>
+  <div class="card"><h3>Dhrystone 2.1</h3><p>The integer benchmark, compiled with INMOS's C compiler. 229 million instructions.</p><div class="row"><button data-prog="dhrystone">run</button></div></div>
+  <div class="card"><h3>INMOS raytracer, 1990</h3><p>A farm: one node collects the image, one hands out work, the rest trace rays. Same image at every size.</p><div class="row"><button data-prog="ray" data-n="6">6 nodes</button><button data-prog="ray" data-n="18">18</button><button data-prog="ray" data-n="64">64</button></div></div>
+  <div class="card"><h3>Boot MINIX 1.5</h3><p>A Unix on a transputer, 1990. Boots to a login prompt; log in as <code>root</code> and type at it.</p><div class="row"><button data-prog="minix">boot</button></div></div>
+</div>
+<div class="result" id="result" hidden>
+  <div class="result-head"><b id="r-title">—</b><span id="r-status" class="r-status">—</span><span class="spacer"></span><button id="r-stop" disabled>stop</button><a href="#workbench" data-tab="workbench">open in workbench</a></div>
+  <canvas id="r-image" class="r-image" width="256" height="256" hidden></canvas>
+  <pre id="r-out" class="r-out"></pre>
+  <div class="r-input"><input id="r-stdin" placeholder="type here while a program waits for input (MINIX: root ⏎)" autocomplete="off"></div>
+  <div class="r-stats" id="r-stats"></div>
+</div>
+</div>
+</div>
+
+<div class="tab bench" id="tab-workbench">
 <header>
   <h1>LOOM</h1>
   <span class="stat">T800 × <b id="nodes">0</b> · virtual clock</span>
@@ -168,7 +229,7 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
   <span class="stat">t <b id="vtime">0 µs</b></span>
   <span class="stat">host <b id="mips">—</b></span>
   <span class="spacer"></span>
-  <span class="stat"><a href="#top">history</a> · <a href="/piece/">the essay</a> · <a href="https://github.com/NakliTechie/loom">source</a> · v1.1</span>
+  <span class="stat"><a href="/piece/">the essay</a> · <a href="https://github.com/NakliTechie/loom">source</a> · v1.1</span>
 </header>
 <main>
   <section>

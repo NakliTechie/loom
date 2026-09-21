@@ -4,6 +4,10 @@ Artifact 2 of the PARAM strand. pahihu's `t4` (Julian Highfield's INMOS T414/T80
 
 Live: **https://param.naklitechie.com** — the story (1987 refusal → PARAM 8000 → the numbers → the export-control chart), a lit schematic of the 64-node machine, then the workbench. The long essay is at `/piece/` (its own repo, [param](https://github.com/NakliTechie/param), reached through a service binding); numbers in [param-fp64](https://github.com/NakliTechie/param-fp64).
 
+## The page
+
+Five tabs: **History** (the 1987 refusal, the 1991 machine) · **The machine** (a lit schematic of the 64-node PARAM 8000 and seven period programs that run on click — hello, primes, knight's tour, Whetstone, Dhrystone, the INMOS raytracer on 6/18/64 nodes, and MINIX 1.5 booting to a shell) · **Numbers** (the benchmark table) · **The line** (the export-control chart) · **Workbench** (disk, console, fabric view, build-from-occam). Bootables are in `site/demo/`; all are INMOS-toolset or INMOS-C output and are the same files the upstream t4 repository publishes.
+
 ## v1.0 — one node
 
 - `site/` — static page (Dense direction), `worker.js` (one T800 per Worker), `t4.js` + `t4.wasm` (131 KB, committed so the deploy needs no emsdk), `tar.js`, `traces/`.

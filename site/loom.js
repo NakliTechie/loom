@@ -7,6 +7,19 @@ const disk = new Map();          // path -> Uint8Array   (/work/... user files, 
 let selected = null, keysSab = null, keyRing = null, running = false;
 const runs = [];
 
+// ---------- tabs (hash routed) ----------
+const TABS = ["history", "machine", "numbers", "chart", "workbench"];
+function showTab(name) {
+  if (!TABS.includes(name)) name = "history";
+  for (const t of TABS) { document.getElementById(`tab-${t}`)?.classList.toggle("on", t === name); }
+  for (const a of document.querySelectorAll("#nav a[data-tab]")) a.classList.toggle("on", a.dataset.tab === name);
+  if (location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
+  window.scrollTo({ top: 0 });
+}
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
+document.addEventListener("click", (e) => { const a = e.target.closest("a[data-tab]"); if (a) { e.preventDefault(); showTab(a.dataset.tab); } });
+showTab(location.hash.slice(1));
+
 // ---------- keyboard ring (SharedArrayBuffer, only when cross-origin isolated) ----------
 if (self.crossOriginIsolated && typeof SharedArrayBuffer !== "undefined") {
   keysSab = new SharedArrayBuffer(4 * (2 + 256));
@@ -95,11 +108,17 @@ $("delete").onclick = () => { disk.delete(selected); selected = null; renderFile
 const ENV = { D7205: "/d7205", ISEARCH: "/d7205/libs/", IBOARDSIZE: "#200000", ITERM: "/d7205/iterms/ansi.itm" };
 function setState(s) { $("state").dataset.s = s; $("state").textContent = s; }
 
-let fabric = null, autoKeys = null;
-function showImage() {
+let fabric = null;
+function resultOut(text) {
+  const el = $("r-out"); el.textContent += text.replace(/[\r\0]/g, "");
+  if (el.textContent.length > 60000) el.textContent = el.textContent.slice(-50000);
+  el.scrollTop = el.scrollHeight;
+  $("nav-live").textContent = `● ${current?.title || "running"}`;
+}
+function showImage() { const c = $("image"); if (!disk.has("/work/ray.mtv")) { c.classList.remove("shown"); return; } drawMtv(c); }
+function drawMtv(c) {
   // ray.mtv: "W H\n" then RGB bytes — the raytracer's output format
-  const b = disk.get("/work/ray.mtv"); const c = $("image");
-  if (!b) { c.classList.remove("shown"); return; }
+  const b = disk.get("/work/ray.mtv"); if (!b) return;
   const hdr = new TextDecoder().decode(b.subarray(0, 16)), m = hdr.match(/^(\d+) (\d+)\n/);
   if (!m) return;
   const w = +m[1], h = +m[2], off = m[0].length, ctx = c.getContext("2d"), img = ctx.createImageData(w, h);
@@ -108,31 +127,48 @@ function showImage() {
   ctx.putImageData(img, 0, 0); c.classList.add("shown");
 }
 const PROGRAMS = {
-  hello: { files: ["hello.btl"], args: ["-s8", "-se", "-sb", "hello.btl"], label: "hello × 1" },
-  whetstone: { files: ["whetstond.btl"], args: ["-s8", "-se", "-sb", "whetstond.btl", "10"], label: "whetstone (double) × 1" },
-  ray: (n) => ({ files: [`raytrace${n}.btl`, `raytrace${n}.map`], args: ["-s8", "-se", "-sb", `raytrace${n}.btl`], label: `raytracer × ${n}`, keys: "1\n" }),
+  hello:     { title: "Hello, world", files: ["hello.btl"], args: ["-s8", "-se", "-sb", "hello.btl"] },
+  prime:     { title: "Primes to 2,000", files: ["prime.btl"], args: ["-s8", "-se", "-sb", "prime.btl"], keys: "2000\r" },
+  knight:    { title: "Knight's tour, 6×6", files: ["knight.btl"], args: ["-s8", "-se", "-sb", "knight.btl"], keys: "6\r1\r1\r" },
+  whetstone: { title: "Whetstone, double precision", files: ["whetstond.btl"], args: ["-s8", "-se", "-sb", "whetstond.btl", "10"] },
+  dhrystone: { title: "Dhrystone 2.1", files: ["dhrystone.b8h"], args: ["-s8", "-se", "-sb", "dhrystone.b8h"] },
+  ray: (n) => ({ title: `INMOS raytracer on ${n} transputers`, files: [`raytrace${n}.btl`, `raytrace${n}.map`], args: ["-s8", "-se", "-sb", `raytrace${n}.btl`], keys: "1\n", image: true }),
+  minix:     { title: "MINIX 1.5 on a transputer", files: ["minix/boot.btl", "minix/0", "minix/fs", "minix/init", "minix/kernel", "minix/minix.cf", "minix/mm", "minix/monitorl"], args: ["-s8", "-se", "-sb", "boot.btl"], keys: "boot\r", interactive: true },
 };
+let current = null;
 async function program(name, n) {
   if (running) return;
   const p = typeof PROGRAMS[name] === "function" ? PROGRAMS[name](n) : PROGRAMS[name];
-  for (const f of p.files) if (!disk.has(`/work/${f}`)) await addFile(f, new Uint8Array(await (await fetch(`demo/${f}`)).arrayBuffer()));
-  disk.delete("/work/ray.mtv"); $("image").classList.remove("shown");
-  autoKeys = p.keys || null;
-  selected = `/work/${p.files[0]}`; renderFiles();
-  document.getElementById("workbench").scrollIntoView({ behavior: "smooth", block: "start" });
-  return runOnce(p.args, { label: p.label });
+  current = { ...p, out: "" };
+  for (const f of p.files) { const local = f.split("/").pop(); if (!disk.has(`/work/${local}`)) await addFile(local, new Uint8Array(await (await fetch(`demo/${f}`)).arrayBuffer())); }
+  disk.delete("/work/ray.mtv"); $("image").classList.remove("shown"); $("r-image").classList.remove("shown");
+  selected = `/work/${p.files[0].split("/").pop()}`; renderFiles();
+  $("result").hidden = false; $("r-title").textContent = p.title; $("r-status").textContent = "booting"; $("r-status").classList.add("running");
+  $("r-out").textContent = ""; $("r-stats").textContent = ""; $("r-stop").disabled = false;
+  document.querySelector(".r-input").style.display = p.interactive ? "" : "none";
+  $("result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const rec = await runOnce(p.args, { label: p.title, keys: p.keys || "" });
+  $("r-status").textContent = rec.why; $("r-status").classList.remove("running"); $("r-stop").disabled = true;
+  $("r-stats").textContent = `${fmt(rec.instr)} instructions per node · ${fmtUs(rec.instr / 10)} of machine time · ${(rec.ms / 1000).toFixed(1)} s in this browser${rec.nodes > 1 ? ` · ${rec.nodes} nodes · ${fmt(rec.msgs)} link messages, ${fmt(rec.bytes)} bytes` : ""}`;
+  if (p.image && disk.has("/work/ray.mtv")) drawMtv($("r-image"));
+  $("nav-live").textContent = "";
+  return rec;
 }
 const demo = (n) => program("ray", n);
-for (const b of document.querySelectorAll("[data-prog]")) b.onclick = () => program(b.dataset.prog, +b.dataset.n || 0);
-$("boot64").onclick = () => program("ray", 64);
+for (const b of document.querySelectorAll("[data-prog]")) b.onclick = () => { showTab("machine"); program(b.dataset.prog, +b.dataset.n || 0); };
+$("r-stop").onclick = () => $("stop").onclick();
+$("r-stdin").addEventListener("keydown", (e) => {
+  if (!running) return;
+  if (e.key === "Enter") { for (const ch of $("r-stdin").value) pushKey(ch.charCodeAt(0)); pushKey(13); $("r-stdin").value = ""; e.preventDefault(); }
+});
 
 function workerNode() {
   const w = new Worker("node-worker.js", { type: "module" });
   let seq = 0; const waiting = new Map();
-  w.onmessage = (e) => { const { id, partial, ...rest } = e.data; if (partial) { print(rest.out); if (autoKeys && /Your Selection/.test(rest.out)) { const k = autoKeys; autoKeys = null; for (const ch of k) pushKey(ch.charCodeAt(0)); print(`[auto-typed "${k.replace("\n", "⏎")}" to the menu]\n`, "sys"); } return; } const r = waiting.get(id); if (r) { waiting.delete(id); r(rest); } };
+  w.onmessage = (e) => { const { id, partial, ...rest } = e.data; if (partial) { print(rest.out); if (current) resultOut(rest.out); return; } const r = waiting.get(id); if (r) { waiting.delete(id); r(rest); } };
   return { w, call: (m) => new Promise((res) => { const id = ++seq; waiting.set(id, res); w.postMessage({ id, ...m }); }) };
 }
-function runOnce(args, { label } = {}) {
+function runOnce(args, { label, keys = "" } = {}) {
   // args: t4 command line for node 0. If <stem>.map exists beside the bootable and names more than one
   // processor, the run is a fabric of that many nodes; otherwise a single node.
   return new Promise((resolve) => {
@@ -153,7 +189,7 @@ function runOnce(args, { label } = {}) {
       quantum: multi ? 50_000 : 2_000_000,
       onOut: (i, text) => {
         print(multi && i > 0 ? text.replace(/^/gm, `[${i}] `) : text, i < 0 ? "sys" : "");
-        if (autoKeys && /Your Selection/.test(text)) { const k = autoKeys; autoKeys = null; setTimeout(() => { for (const ch of k) pushKey(ch.charCodeAt(0)); print(`[auto-typed "${k.replace("\n", "⏎")}" to the menu]\n`, "sys"); }, 0); }
+        if (current && i === 0) resultOut(text);
       },
       onLink: (link, bytes, k) => { topoPulse(link, bytes, k); const t = machine.traces.get(link); if (t) t.last = k; },
       onTick: (k, vt, results) => {
@@ -171,7 +207,7 @@ function runOnce(args, { label } = {}) {
     });
     topoInit(topo); machineInit(topo);
     fabric.start(topo, (i) => ({
-      files, env: { ...ENV, ...(multi ? { SPYNET: mapName } : {}) }, cwd: "/work", keyRing: i === 0 ? keysSab : null,
+      files, env: { ...ENV, ...(multi ? { SPYNET: mapName } : {}) }, cwd: "/work", keyRing: i === 0 ? keysSab : null, keys: i === 0 ? keys : "",
       args: multi ? (i === 0 ? ["-s8", "-sl", "-sn", "0", ...args] : ["-s8", "-sl", "-sn", String(i)]) : args,
     })).then(async () => {
       const r = await nodes[0].call({ type: "finish" });
@@ -270,8 +306,9 @@ function machinePaint(k, results, final = false) {
   if (!machine.svg || !machine.n) return;
   for (let i = 0; i < machine.n; i++) machine.chips[i].classList.toggle("busy", !final && !!results && results[i].ran > 0 && !results[i].halted);
   for (const t of machine.traces.values()) t.line.classList.toggle("hot", !final && k - t.last < 4);
-  if (final) $("machine-status").textContent = `Last run: ${machine.n} node${machine.n > 1 ? "s" : ""}, ${fmt(fabric?.stats.msgs || 0)} link messages.`;
-  else $("machine-status").textContent = `Running on ${machine.n} node${machine.n > 1 ? "s" : ""}: ${results ? results.filter((r) => r.ran > 0).length : 0} computing, ${fmt(fabric?.stats.msgs || 0)} link messages so far.`;
+  if (final) { $("machine-status").textContent = `Last run: ${machine.n} node${machine.n > 1 ? "s" : ""}, ${fmt(fabric?.stats.msgs || 0)} link messages.`; return; }
+  $("machine-status").textContent = `Running on ${machine.n} node${machine.n > 1 ? "s" : ""}: ${results ? results.filter((r) => r.ran > 0).length : 0} computing, ${fmt(fabric?.stats.msgs || 0)} link messages so far.`;
+  if (current) $("r-status").textContent = `running · ${(k * (fabric?.Q || 0) / 10 / 1e6).toFixed(1)} s of machine time`;
 }
 // fragments from the essay (same origin through /piece/)
 fetch("/piece/chart.svg").then((r) => r.ok ? r.text() : "").then((t) => { if (t) { $("chart").innerHTML = t; $("chart").querySelector("svg")?.classList.add("chart"); } }).catch(() => {});
