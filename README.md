@@ -33,3 +33,7 @@ Emscripten 6.x. Changes to upstream are confined to `#ifdef T4WEB` blocks plus `
 `python3 serve.py 8767` serves `site/` with the COOP/COEP headers and maps `/fixtures/` to `vendor/t4` for driving tests.
 
 This product includes software developed by Julian Highfield.
+
+## Deploy
+
+Static-assets Worker `loom`, custom domain `loom.naklitechie.com`, `site/_headers` carries COOP/COEP. Preferred: Cloudflare Workers Builds connected to `NakliTechie/loom` (dashboard → Workers & Pages → loom → Settings → Build; no build command; deploy `npx wrangler deploy`). Fallback: `.github/workflows/deploy.yml`, gated on repo variable `DEPLOY_VIA_ACTIONS=true` + secret `CLOUDFLARE_API_TOKEN`. Manual: `npx wrangler deploy`.
