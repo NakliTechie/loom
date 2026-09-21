@@ -1,0 +1,64 @@
+BOOT FILES
+==========
+
++hello.btl
+        200303AP  works and runs
+
++prime.btl
+        200303AP  entering 100, does NOT stop when reached 100
+        200304AP  works, as expected
+
++sqrroots.btl
+        200303AP  entering 12.0, reports Error flag is set
+                  disabling the Error checking prints the number 12.00000,
+                  then reports NaN as its root
+        200304AP  invalid instruction MOVE2DINIT
+        200304AP  works as expected: no Interrupt flag, uninterruptible NFIX/PFIX
+
++knight.btl
+        200303AP  entering board size 5, and (1,1) reports no path found
+        200304AP  infinite loop ???
+        200304AP  works as expected: no Interrupt flag, uninterruptible NFIX/PFIX
+
++D7205A occam 2 toolset
+        200306AP  successfully built hello.occ
+
++Minix demo boot.btl
+        200304AP  hangs on Loading boot monitor...
+        200306AP  hangs on sizing memory, server reports too short messages
+        200307AP  fixed LinkChannel checking, hangs on Loading boot monitor again
+        200307AP  fixed DRAM memory wrapping, server not implemented packet sending, it works!
+
++savage
+        200318AP  works, T800 DATAN/DTAN gives the same results as T414 
+                  double precision version
+
++savageb
+        200320AP  tbmaths version of Savage does NOT work (roundsn, unpacksn, postnormsn)
+        200324AP  although roundsn passed TVS1 it was buggy, so it took some hours to
+                  recover the problem in savageb...
+-TVS1
+        200321AP  TVS1 results
+                FAIL bitrevnbits
+                FAIL crcbyte
+                FAIL crcword
+                FAIL cword
+                FAIL div
+                FAIL fmul
+                FAIL ldiv
+                FAIL mul
+                FAIL postnormsn
+                FAIL rem
+                FAIL roundsn
+                FAIL unpacksn
+                FAIL wcnt
+                FAIL xword
+        200322AP  TVS1 results
+                FAIL cword
+                FAIL fmul
+                FAIL postnormsn
+                FAIL roundsn
+                FAIL unpacksn
+        200324AP  TVS1 results
+                FAIL cword
+

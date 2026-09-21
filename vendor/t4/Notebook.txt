@@ -1,0 +1,350 @@
+#include <fenv.h>
+man fegetenv
+
+Not-a-Number Arithmetic
+  If only one arg is NaN then it is returned, if both args are NaNs the one
+  with the larger fractional part is returned. All other cases return a
+  (different) NaN.
+
+Division by zero (OK)
+  If a finite non-zero number is divided by zero then the error flag is set
+  and a correctly signed infinity is returned. The error flag is set.
+
+Overflow
+  T800 conforms to the IEEE 754 standard, the error flag is set.
+
+Infinity
+  All arithmetic involving an Inf arg will set the error flag.
+
+Underflow and inexact
+  These exceptions are not implemented in the T800.
+
+At the end of all FP operations the rounding mode is reset to Round-To-Nearest,
+except the rounding mode setting operations.
+
+In arithmetic the fp error flag is set in circumstances in which the invalid
+operation, division by zero or overflow exceptions would be flagged. In addition
+the flag is set if an input to a fp operation is infinite.
+
+
+Efficiency of encoding
+----------------------
+
+Memory is word accessed the processor will receive four instructions
+for every fetch. There is an extra word of pre-fetch buffer, so the
+processor rarely has to wait for an instruction fetch before proceeding.
+Since the buffer is short, there is little time penalty when a jump
+instruction causes the buffer contents to be discarded.
+
+
+Priority
+--------
+
+LoPri processes are periodically timesliced, a process is only permitted
+to run for a maximum of two time slices before it is forcibly descheduled
+at the next descheduling point.
+Timeslice period is 5120 cycles of the external 5MHz input clock (~1ms).
+HiPri process is waiting for an external channel to become ready,
+then the interrupt latency is typically 19 processor cycles (max. 58 cycles,
+assuming use of on-chip RAM).
+
+
+Timers
+------
+
+Clock0          HiPri processor clock value, incremented every  1us
+Clock1          LoPri processor clock value, incremented every 64us
+TNextReg0       Time of earliest event on HiPri timer queue
+TNextReg1       Time of earliest event on LoPri timer queue
+
+
+Ident   Interpretation
+----------------------
+b       Bit number of the highest bit set in register A. Bit 0 is the
+        least significant bit.
+n       Number of places shifted.
+w       Number of words in the message. Part words are counted as full
+        words. If the message is not word aligned the number of words
+        is increased to include the part words at either end of the
+        message.
+
+
+In the Floating Point Operation Codes a selector sequence code (ldc + 
+fpentry) is indicated in the Memory Code column by s. The code given 
+in the Operation Code column is the indirection code, the operand for 
+the ldc instruction.
+
+
+Function codes
+--------------
+0x      j                3      jump                            D
+1x      ldlp             1      load local ptr
+2x      pfix             1      prefix
+3x      ldnl             2      load non-local
+4x      ldc              1      load constant
+5x      ldnlp            1      load non-local ptr
+6x      nfix             1      negative prefix
+7x      ldl              2      load local
+8x      adc              1      add constant                    E
+9x      call             7      call
+Ax      cj               2      cond jump (not taken)
+                         4      (taken)
+Bx      ajw              1      adjust wksp
+Cx      eqc              2      equals constant
+Dx      stl              1      store local
+Ex      stnl             2      store non-local
+Fx      ior              -      operate
+
+
+Arithmetic/logical operation codes
+----------------------------------
+46      and              1      and
+4B      or               1      or
+33      xor              1      exclusive or
+32      not              1      bitwise not
+41      shl             n+2     shift left
+40      shr             n+2     shift right
+05      add              1      add                             E
+0C      sub              1      subtract                        E
+53      mul             40      multiply                        E
+72      fmul            38      frac multiply (no rounding)     E
+                        35      (rounding)                      E
+2C      div             39      divide                          E
+1F      rem             37      remainder                       E
+09      gt               2      greater than
+04      diff             1      difference
+52      sum              1      sum
+08      prod            b+4     product for positive Areg
+                        m+5     T800: product for negative Areg
+
+
+Long arithmetic operation codes
+-------------------------------
+16      ladd             2      long add                        E
+38      lsub             2      long subtract                   E
+37      lsum             2      long sum
+4F      ldiff            2      long diff
+31      lmul            33      long multiply
+1A      ldiv            35      long divide                     E
+36      lshl            n+3     long shift left (n<32)
+                        n-28    (n>=32)
+35      lshr            n+3     long shift right (n<32)
+                        n-28    (n>=32)
+19      norm            n+5     normalise (n<32)
+                        n-26    (n>=32)
+                         3      (n=64)
+
+
+T414 Floating-point support operation codes
+-------------------------------------------
+73      cflerr           3      chk FP error                    E
+63      unpacksn        15      unpack SF num
+6D      roundsn         12/15   round SF num
+6C      postnormsn       5/30   post-normalise correction of
+                                SF num
+71      ldinf            1      load SF Inf
+
+Typical/Maximum cycles.
+
+
+General operation codes
+-----------------------
+00      rev              1      reverse
+3A      xword            4      extend to word
+56      cword            5      chk word                        E
+1D      xdble            2      extend to double
+4C      csngl            3      chk single                      E
+42      mint             1      min int
+
+
+T800 Block move operation codes
+-------------------------------
+5B      move2dinit       8      initialise data for 2D block move       T800
+5C      move2dall     (2p+23)*r 2D block copy                           T800
+5D      move2dnonzero (2p+23)*r 2D block copy non-zero bytes            T800
+5E      move2dzero    (2p+23)*r 2D block copy zero bytes                T800
+
+
+T800 CRC and bit operation codes
+--------------------------------
+74      crcword         35      calculate crc on word                   T800
+75      crcbyte         11      calculate crc on byte                   T800
+76      bitcnt         b+2      count bits set in word                  T800
+77      bitrevword      36      reverse bits in word                    T800
+78      bitrevnbits    n+4      reverse bottom n bits in byte           T800
+
+
+Indexing/array operation codes
+------------------------------
+02      bsub             1      byte subs
+0A      wsub             2      words subs
+81      wsubdb           3      form double word subscript              T800
+34      bcnt             2      byte cnt
+3F      wcnt             5      word cnt
+01      lb               5      load byte
+3B      sb               4      store byte
+4A      move            2w+8    move msg
+
+
+Timer handling operation codes
+------------------------------
+22      ldtimer          2      load timer
+2B      tin             30      timer input (time future)       D
+                         4      (time past)                     D
+4E      talt             4      timer alt start
+51      taltwt          15      timer alt wait (time past)      D
+                        48      timer alt wait (time future)    D
+47      enbt             8      enable timer
+2E      dist            23      disble timer
+
+
+Input/output operation codes
+----------------------------
+07      in              2w+19   input msg                       D
+0B      out             2w+19   output msg                      D
+0F      outword         23      output word                     D
+0E      outbyte         23      output byte                     D
+12      resetch          3      reset chan
+43      alt              2      alt start
+44      altwt            5      alt wait (chan rdy)             D
+                        17      alt wait (chan not rdy)         D
+45      altend           4      alt end
+49      enbs             3      enable skip
+30      diss             4      disable skip
+48      enbc             7      enable chan (rdy)
+                         5      enable chan (not rdy)
+2F      disc             8      disable chan
+
+
+Control operation codes
+-----------------------
+20      ret              5      return
+1B      ldpi             2      load ptr to instr
+3C      gajw             2      general adjust wksp
+5A      dup              1      duplicate top of stack                  T800
+06      gcall            4      general call
+21      lend            10      loop end (loop)                 D
+                         5      loop end (exit)                 D
+
+
+Scheduling operation codes
+--------------------------
+0D      startp          12      start proc                      D
+03      endp            13      end proc                        D
+39      runp            10      run proc
+15      stopp           11      stop proc
+1E      ldpri            1      load current pri
+
+
+Error handling operation codes
+------------------------------
+13      csub0           2       chk subs from 0                 E
+4D      ccnt1           3       chk count from 1                E
+29      testerr         2       test error false and clr (no error)
+                        3       (error)
+10      seterr          1       set error                       E
+55      stoperr         2       stop on error (no error)        D
+57      clrhalterr      1       clear halt-on-error
+58      sethalterr      1       set halt-on-error
+59      testhalterr     2       test halt-on-error
+
+
+Processor initialisation operation codes
+----------------------------------------
+2A      testpranal      2       test processor analysing
+3E      saveh           4       save HiPriQ regs
+3D      savel           4       save LoPriQ regs
+18      sthf            1       store HiPri front ptr
+50      sthb            1       store HiPri back ptr
+1C      stlf            1       store LoPri front ptr
+17      stlb            1       store LoPri back ptr
+54      sttimer         1       store timer
+
+
+T800 Floating point load/store operation codes
+----------------------------------------------
+8E      fpldnlsn        2       fp load non-local single
+8A      fpldnldb        3       fp load non-local double
+86      fpldnlsni       4       fp load non-local indexed single
+82      fpldnldbi       6       fp load non-local indexed double
+9F      fpldzerosn      2       load zero single
+A0      fpldzerodb      2       load zero double
+AA      fpldnladdsn     8/11    fp load non-local & add single  F
+A6      fpldnladddb     9/12    fp load non-local & add double  F
+AC      fpldnlmulsn    13/20    fp load non-local & multiply single     F
+A8      fpldnlmuldb    21/30    fp load non-local & multiply double     F
+88      fpstnlsn        2       fp store non-local single
+84      fpstnldb        3       fp store non-local double
+9E      fpstnli32       4       store non-local int32
+
+Typical/Maximum cycles.
+
+
+T800 Floating point general operation codes
+-------------------------------------------
+AB      fpentry         1       fp unit entry
+A4      fprev           1       fp reverse
+A3      fpdup           1       fp duplicate
+
+
+T800 Floating point rounding operation codes
+--------------------------------------------
+22  s   fpurn           1       set rounding mode to round nearest
+06  s   fpurz           1       set rounding mode to round zero
+04  s   fpurp           1       set rounding mode to round positive
+05  s   fpurm           1       set rounding mode to round minus
+
+
+T800 Floating point error operation codes
+-----------------------------------------
+83      fpchkerror      1       check fp error                  E
+9C      fptesterror     2       test fp error false and clear   F
+23  s   fpuseterror     1       set fp error                    F
+9C  s   fpuclearerror   1       clear fp error                  F
+
+
+T800 Floating point comparison operation codes
+----------------------------------------------
+94      fpgt            4/6     fp greater than                 F
+95      fpeq            3/5     fp equality                     F
+92      fpordered       3/4     fp orderability
+91      fpnan           2/3     fp NaN
+93      fpnotfinite     2/2     fp not finite
+0E  s   fpuchki32       3/4     check in range of type int32    F
+0F  s   fpuchki64       3/4     check in range of type int64    F
+
+Typical/Maximum cycles.
+
+
+T800 Floating point conversion operation codes
+----------------------------------------------
+07  s   fpur32tor64     3/4     real32 to real64                F
+08  s   fpur64tor32     6/9     real64 to real32                F
+9D      fprtoi32        7/9     real to int32                   F
+96      fpi32tor32      8/10    int32 to real32
+98      fpi32tor64      8/10    int32 to real64
+9A      fpb32tor64      8/ 8    bit32 to real64
+0D  s   fpunoround      2/ 2    real64 to real32, no round
+A1      fpint           5/ 6    round to floating integer       F
+
+Typical/Maximum cycles.
+
+
+T800 Floating point arithmetic operation codes
+----------------------------------------------
+87      fpadd          6/ 9  6/ 9  fp add                       F
+89      fpsub          6/ 9  6/ 9  fp subtract                  F
+8B      fpmul         11/ 8 18/27  fp multiply                  F
+8C      fpdiv         16/28 31/43  fp divide                    F
+0B  s   fpuabs         2/ 2  2/ 2  fp absolute                  F
+8F      fpremfirst    36/46 36/46  fp remainder first step      F
+90      fpremstep     32/36 32/36  fp remainder iteration
+01  s   fpusqrtfirst  27/29 27/29  fp square root first step    F
+02  s   fpusqrtstep   42/42 42/42  fp square root step
+03  s   fpusqrtlast    8/ 9  8/ 9  fp square root end
+0A  s   fpuexpinc32    6/ 9  6/ 9  multiply by 2^32             F
+09  s   fpuexpdec32    6/ 9  6/ 9  divide by 2^32               F
+12  s   fpumulby2      6/ 9  6/ 9  multiply by 2.0              F
+11  s   fpudivby2      6/ 9  6/ 9  divide by 2.0                F
+
+Typical/Maximum cycles.
