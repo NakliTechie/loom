@@ -42,7 +42,10 @@ button:disabled { opacity: 0.4; cursor: default; }
 .firstvisit.on { display: flex; } .firstvisit .spacer { flex: 1; } .firstvisit button { padding: 1px 7px; }
 .result { margin: 0 0 1.4rem; border: 1px solid var(--accent); font: 12.5px/1.45 var(--mono); scroll-margin-top: 230px; }
 .r-label { font-size: 10px; letter-spacing: 0.1em; color: var(--accent); }
-.machine-strip { position: sticky; top: 41px; z-index: 4; background: var(--canvas); border-bottom: 1px solid var(--i15); padding: 8px 16px 6px; }
+.machine-strip { position: sticky; top: 41px; z-index: 4; background: var(--canvas); border-bottom: 1px solid var(--i15); padding: 6px 16px 6px; }
+.machine-pick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; font: 11px var(--mono); color: var(--i50); padding-bottom: 4px; }
+.machine-pick button { font-size: 11px; padding: 2px 8px; color: var(--i70); }
+.machine-pick button.on { border-color: var(--accent); color: var(--accent); }
 .machine-strip .machine { width: 100%; height: 150px; border: 0; background: transparent; }
 @media (min-width: 900px) { .machine-strip .machine { height: 230px; } }
 @media (min-width: 900px) { .machine-strip { padding-top: 4px; } }
@@ -183,6 +186,8 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
 <p>C-DAC was set up in Pune in 1988. Its first machine, PARAM 8000, was delivered as a 64-node system in August 1991. Each node was an INMOS transputer: a 32-bit microprocessor with a 64-bit floating-point unit, 4 KB of memory and four serial links on one chip, designed to be wired to other transputers and programmed in occam, a language where processes talk only through channels. PARAM wired 64 of them through a reconfigurable switch, so the topology was whatever the program asked for.<a href="/piece/#n7" class="n">[3]</a></p>
 <p>A single 20 MHz T800 managed <span class="n">0.37 MFLOPS</span> on LINPACK 100 in double precision, per Dongarra's table; INMOS quoted <span class="n">1.5 MFLOPS</span> on Livermore Loop 7 in single precision.<a href="/piece/#n8" class="n">[4]</a> Sixty-four of them, if none ever waited for another, would reach about 24 MFLOPS on that test — less than half of one Cray CPU. C-DAC's own figure for a 256-node machine was 1 GFLOPS theoretical and 100 to 200 MFLOPS sustained.<a href="/piece/#n9" class="n">[5]</a> The machine sold anyway, at around $350,000, to buyers that included Germany, the United Kingdom and Russia.<a href="/piece/#n11" class="n">[6]</a></p>
 
+<h2>The others <small>MEIKO · PARSYTEC</small></h2>
+<p>PARAM was not the only machine built this way. Meiko Scientific, founded in 1985 by engineers who left INMOS, showed its Computing Surface that July and sold it from 1986: boards of transputers in a module of up to forty, every link between boards routed through Meiko's own switch chips on the backplane. Edinburgh ran one with about 400 T800s until 1994. Parsytec of Aachen shipped the GCel in 1992: a "GigaCube" of four clusters, sixteen T805s each with a spare and four INMOS C004 routing chips; a 1,024-processor GC-3 made the TOP500 that year. The machine tab lets you run the same program on all three, wired the way each machine wired it.<a href="https://github.com/NakliTechie/loom/blob/main/MACHINES.md" class="n">[7]</a></p>
 <p class="next"><a href="#machine" data-tab="machine">Next: the machine, running →</a></p>
 </div>
 </div>
@@ -210,12 +215,14 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
 
 <div class="tab story" id="tab-machine">
 <div class="machine-strip">
-  <svg id="machine" class="machine" viewBox="0 0 900 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Schematic of a 64-transputer PARAM 8000: an 8 by 8 array of T800 nodes, a host card, and a link switch. Nodes light while they run."></svg>
-  <div class="machine-cap">PARAM 8000, schematic: 64 T800 nodes, a host card, a link switch. Nodes light while they compute; links glow while they carry data. <span id="machine-status">Idle — pick a program below.</span></div>
+  <div class="machine-pick" id="machine-pick"><span>machine</span><button data-m="param" class="on">PARAM 8000 · 1991</button><button data-m="meiko">Meiko Computing Surface · 1986</button><button data-m="parsytec">Parsytec GCel · 1992</button></div>
+  <svg id="machine" class="machine" viewBox="0 0 900 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Schematic of a 64-transputer machine. Nodes light while they run."></svg>
+  <div class="machine-cap"><span id="machine-cap-name">PARAM 8000, schematic</span>: nodes light while they compute; links glow while they carry data. <span id="machine-status">Idle — pick a program below.</span></div>
 </div>
 <div class="wrap">
-<h2>The machine <small>PARAM 8000 · EMULATED</small></h2>
-<p>Sixty-four INMOS T800s, each emulated by <a href="https://github.com/pahihu/t4">t4</a> compiled to WebAssembly in its own Worker, run in lockstep on one virtual clock at ten instructions per microsecond. Time on this machine is the same on every computer that opens the page, and every run produces the same bytes. The programs are real transputer binaries from the period, most produced by INMOS's 1990 occam toolset.</p>
+<h2>The machine <small>THREE TRANSPUTER SYSTEMS · ONE ENGINE</small></h2>
+<p id="machine-blurb"></p>
+<p>Sixty-four INMOS transputers, each emulated by <a href="https://github.com/pahihu/t4">t4</a> compiled to WebAssembly in its own Worker, run in lockstep on one virtual clock at ten instructions per microsecond. Time on this machine is the same on every computer that opens the page, and every run produces the same bytes. The programs are real transputer binaries from the period, most produced by INMOS's 1990 occam toolset.</p>
 <p class="steps"><b>1</b> pick a program below &nbsp; <b>2</b> the machine above lights up while it runs &nbsp; <b>3</b> the result appears here, under the machine. Small programs finish in a blink; the raytracer and MINIX run for a while.</p>
 <div class="result" id="result" hidden>
   <div class="result-head"><span class="r-label">RESULT</span><b id="r-title">—</b><span id="r-status" class="r-status">—</span><span class="spacer"></span><button id="r-stop" disabled>stop</button><a href="#workbench" data-tab="workbench">open in workbench</a></div>
@@ -253,7 +260,7 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
 <figure><img src="guide/g-history.png" alt="The History tab" loading="lazy"><figcaption>History. Read this first if the name PARAM means nothing to you yet.</figcaption></figure>
 
 <h3>Running a program</h3>
-<p>Go to <a href="#machine" data-tab="machine">The machine</a>. The schematic at the top is a diagram, not a photograph: sixty-four T800 chips, a host card on the left, the link switch along the bottom. It stays in view while you scroll. Under it are seven cards. Click a button on a card and three things happen:</p>
+<p>Go to <a href="#machine" data-tab="machine">The machine</a>. Three buttons above the schematic pick the machine: PARAM 8000, the Meiko Computing Surface, or a Parsytec GCel. All three are sixty-four transputers on the same emulated engine; what differs is how the nodes were wired, and the raytracer is wired accordingly. The schematic is a diagram, not a photograph, and it stays in view while you scroll. Under it are seven cards. Click a button on a card and three things happen:</p>
 <ol class="guide-list">
   <li>The machine boots the program onto as many nodes as it needs — one for most, six to sixty-four for the raytracer. The caption under the schematic tells you what is happening.</li>
   <li>Nodes that are computing light up; links carrying data glow. Small programs finish in a blink and you will only see the finished state. The raytracer and MINIX run long enough to watch.</li>

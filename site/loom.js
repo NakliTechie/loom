@@ -139,7 +139,7 @@ const PROGRAMS = {
   knight:    { title: "Knight's tour, 6×6", files: ["knight.btl"], args: ["-s8", "-se", "-sb", "knight.btl"], keys: "6\r1\r1\r" },
   whetstone: { title: "Whetstone, double precision", files: ["whetstond.btl"], args: ["-s8", "-se", "-sb", "whetstond.btl", "10"] },
   dhrystone: { title: "Dhrystone 2.1", files: ["dhrystone.b8h"], args: ["-s8", "-se", "-sb", "dhrystone.b8h"] },
-  ray: (n) => ({ title: `INMOS raytracer on ${n} transputers`, files: [`raytrace${n}.btl`, `raytrace${n}.map`], args: ["-s8", "-se", "-sb", `raytrace${n}.btl`], keys: "1\n", image: true }),
+  ray: (n) => { const f = MACHINES[machineId].prog(n); return { title: `INMOS raytracer on ${n} transputers (${MACHINES[machineId].name})`, files: [`${f}.btl`, `${f}.map`], args: ["-s8", "-se", "-sb", `${f}.btl`], keys: "1\n", image: true }; },
   minix:     { title: "MINIX 1.5 on a transputer", files: ["minix/boot.btl", "minix/0", "minix/fs", "minix/init", "minix/kernel", "minix/minix.cf", "minix/mm", "minix/monitorl"], args: ["-s8", "-se", "-sb", "boot.btl"], keys: "boot\r", interactive: true },
 };
 let current = null;
@@ -269,35 +269,72 @@ $("build").onclick = build;
 
 renderFiles();
 
-// ---------- the machine: 8×8 T800 array schematic that lights while the fabric runs ----------
+// ---------- the machines: three T800 systems, one engine. Each has a schematic renderer and a wiring for the raytracer ----------
+const MACHINES = {
+  param: { name: "PARAM 8000", place: "C-DAC, Pune · 1991", chip: "T800", legend: ["PARAM 8000", "64 × IMS T800", "reconfigurable switch", "schematic"],
+    blurb: "Sixty-four nodes through a reconfigurable link switch: the topology is whatever the program asks for. The raytracer is wired as a chain, hop by hop through the switch.",
+    prog: (n) => `raytrace${n}` },
+  meiko: { name: "Meiko Computing Surface", place: "Meiko Scientific, Bristol · 1986", chip: "T800", legend: ["Computing Surface", "16 boards × 4 T800", "backplane link switch", "schematic"],
+    blurb: "Boards of four transputers in a module of up to forty boards; every inter-board link is routed over the backplane through Meiko's link-switch chips. Edinburgh ran one with about 400 T800s. Here: 64, and the raytracer's hops all cross the backplane.",
+    prog: (n) => `meiko${n}` },
+  parsytec: { name: "Parsytec GCel (GC-1)", place: "Parsytec, Aachen · 1992", chip: "T805", legend: ["GigaCube", "4 clusters × 16 T805", "C004 routers per cluster", "schematic"],
+    blurb: "One GigaCube: four clusters of sixteen T805s, each cluster with its own INMOS C004 routing chips and a spare seventeenth processor. A GC-3 with 1,024 of these made the 1992 TOP500. Here: hops inside a cluster go through its routers, hops between clusters cross the cube.",
+    prog: (n) => `parsytec${n}` },
+};
+let machineId = "param";
 const machine = { chips: [], labels: [], traces: new Map(), n: 0 };
-(function drawMachine() {
+function drawMachine(id) {
   const svg = $("machine"); if (!svg) return;
   const NS = "http://www.w3.org/2000/svg", el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  svg.innerHTML = ""; machine.chips = []; machine.labels = []; machine.traces.clear(); machine.n = 0;
+  const M = MACHINES[id];
   svg.appendChild(el("rect", { x: 8, y: 8, width: 884, height: 284, class: "board", rx: 2 }));
-  // host card
   const host = el("g", {}); host.appendChild(el("rect", { x: 24, y: 24, width: 96, height: 56, class: "host" }));
   const ht = el("text", { x: 72, y: 48, "text-anchor": "middle", class: "legend" }); ht.textContent = "HOST"; host.appendChild(ht);
-  const ht2 = el("text", { x: 72, y: 62, "text-anchor": "middle", class: "legend" }); ht2.textContent = "iserver · console · files"; host.appendChild(ht2);
+  const ht2 = el("text", { x: 72, y: 62, "text-anchor": "middle", class: "legend" }); ht2.textContent = id === "parsytec" ? "SUN workstation" : id === "meiko" ? "local host board" : "iserver · console · files"; host.appendChild(ht2);
   svg.appendChild(host);
-  for (const [i, t] of ["PARAM 8000", "64 × IMS T800", "4 links each", "schematic"].entries()) { const lg = el("text", { x: 24, y: 112 + i * 12, class: "legend" }); lg.textContent = t; svg.appendChild(lg); }
-  // link switch bar
-  svg.appendChild(el("rect", { x: 24, y: 250, width: 852, height: 26, class: "bar" }));
-  const bt = el("text", { x: 450, y: 266, "text-anchor": "middle", class: "legend" }); bt.textContent = "reconfigurable link switch — the topology is whatever the program's .map asks for"; svg.appendChild(bt);
-  // 8×8 array
-  const x0 = 150, y0 = 22, cw = 78, ch = 27, sw = 60, sh = 18;
-  for (let i = 0; i < 64; i++) {
-    const r = Math.floor(i / 8), c = i % 8, x = x0 + c * (cw + 12), y = y0 + r * ch;
+  for (const [i, t] of M.legend.entries()) { const lg = el("text", { x: 24, y: 112 + i * 12, class: "legend" }); lg.textContent = t; svg.appendChild(lg); }
+  const addChip = (i, x, y, sw, sh) => {
     const g = el("g", {});
     const chip = el("rect", { x, y, width: sw, height: sh, class: "chip", rx: 1 });
     for (const [px, py] of [[x + sw / 2, y - 2], [x + sw + 1, y + sh / 2 - 1], [x + sw / 2, y + sh], [x - 3, y + sh / 2 - 1]]) g.appendChild(el("rect", { x: px - 1, y: py, width: 2, height: 2, class: "pad" }));
-    const t = el("text", { x: x + sw / 2, y: y + sh / 2 + 2, "text-anchor": "middle", class: "lbl" }); t.textContent = `T800 #${i}`;
+    const t = el("text", { x: x + sw / 2, y: y + sh / 2 + 2, "text-anchor": "middle", class: "lbl" }); t.textContent = `${M.chip} #${i}`;
     g.appendChild(chip); g.appendChild(t); svg.appendChild(g);
-    machine.chips.push(chip); machine.labels.push(t);
-    chip._cx = x + sw / 2; chip._cy = y + sh / 2;
+    machine.chips[i] = chip; machine.labels[i] = t; chip._cx = x + sw / 2; chip._cy = y + sh / 2;
+  };
+  if (id === "param") {
+    svg.appendChild(el("rect", { x: 24, y: 250, width: 852, height: 26, class: "bar" }));
+    const bt = el("text", { x: 450, y: 266, "text-anchor": "middle", class: "legend" }); bt.textContent = "reconfigurable link switch — the topology is whatever the program's .map asks for"; svg.appendChild(bt);
+    for (let i = 0; i < 64; i++) addChip(i, 150 + (i % 8) * 90, 22 + Math.floor(i / 8) * 27, 60, 18);
+  } else if (id === "meiko") {
+    // 16 boards in a module rack, 4 T800 each, all links to the backplane (bar at the bottom)
+    svg.appendChild(el("rect", { x: 24, y: 254, width: 852, height: 24, class: "bar" }));
+    const bt = el("text", { x: 450, y: 269, "text-anchor": "middle", class: "legend" }); bt.textContent = "module backplane — link switch chips route every inter-board link · supervisor bus"; svg.appendChild(bt);
+    for (let b = 0; b < 16; b++) {
+      const bx = 150 + (b % 8) * 90, by = 20 + Math.floor(b / 8) * 118;
+      svg.appendChild(el("rect", { x: bx - 6, y: by - 6, width: 72, height: 110, class: "slot" }));
+      const bl = el("text", { x: bx + 30, y: by + 100, "text-anchor": "middle", class: "legend" }); bl.textContent = `board ${b}`; svg.appendChild(bl);
+      for (let c = 0; c < 4; c++) addChip(b * 4 + c, bx, by + c * 22, 60, 16);
+      svg.appendChild(el("line", { x1: bx + 30, y1: by + 104, x2: bx + 30, y2: 254, class: "trace" }));
+    }
+  } else if (id === "parsytec") {
+    // one GigaCube: 4 clusters of 16 T805 (4×4), each with C004 routers, clusters linked
+    for (let c = 0; c < 4; c++) {
+      const cx0 = 150 + (c % 2) * 372, cy0 = 20 + Math.floor(c / 2) * 132;
+      svg.appendChild(el("rect", { x: cx0 - 8, y: cy0 - 6, width: 356, height: 124, class: "slot" }));
+      const cl = el("text", { x: cx0, y: cy0 + 112, class: "legend" }); cl.textContent = `cluster ${c} · 16 × T805 + spare · 4 × C004`; svg.appendChild(cl);
+      svg.appendChild(el("rect", { x: cx0 + 236, y: cy0 + 100, width: 100, height: 14, class: "bar" }));
+      const rt = el("text", { x: cx0 + 286, y: cy0 + 110, "text-anchor": "middle", class: "legend" }); rt.textContent = "C004 × 4"; svg.appendChild(rt);
+      for (let k = 0; k < 16; k++) addChip(c * 16 + k, cx0 + (k % 4) * 88, cy0 + Math.floor(k / 4) * 24, 60, 16);
+    }
   }
   machine.svg = svg; machine.el = el;
-})();
+  $("machine-cap-name").textContent = `${M.name}, schematic`;
+  $("machine-blurb").textContent = M.blurb;
+  for (const b of document.querySelectorAll("#machine-pick button")) b.classList.toggle("on", b.dataset.m === id);
+}
+drawMachine(machineId);
+for (const b of document.querySelectorAll("#machine-pick button")) b.onclick = () => { if (running) return; machineId = b.dataset.m; drawMachine(machineId); $("machine-status").textContent = "Idle — pick a program below."; };
 function machineInit(topo) {
   if (!machine.svg) return;
   for (const l of machine.traces.values()) l.line.remove(); machine.traces.clear();
