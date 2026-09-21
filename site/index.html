@@ -35,7 +35,14 @@ button:disabled { opacity: 0.4; cursor: default; }
 .nav .spacer { flex: 1; } .nav .live { color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
 .tab { display: none; } .tab.on { display: block; }
 .story .next { margin-top: 2.5rem; font: 13px var(--mono); }
-.result { margin: 1.4rem 0 0; border: 1px solid var(--i15); font: 12.5px/1.45 var(--mono); }
+.result { margin: 1.4rem 0 0; border: 1px solid var(--accent); font: 12.5px/1.45 var(--mono); scroll-margin-top: 230px; }
+.r-label { font-size: 10px; letter-spacing: 0.1em; color: var(--accent); }
+.machine-strip { position: sticky; top: 41px; z-index: 4; background: var(--canvas); border-bottom: 1px solid var(--i15); padding: 8px 16px 6px; }
+.machine-strip .machine { width: 100%; height: 150px; border: 0; background: transparent; }
+.machine-cap { font: 11px/1.4 var(--mono); color: var(--i50); text-align: center; padding-top: 2px; }
+.machine-cap span { color: var(--i85); }
+.story .steps { font: 12.5px/1.6 var(--mono); color: var(--i70); }
+.story .steps b { color: var(--accent); border: 1px solid var(--accent); padding: 0 5px; margin-right: 2px; }
 .result-head { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--i08); }
 .result-head .spacer { flex: 1; } .result-head a { color: var(--i50); font-size: 11px; }
 .r-status { color: var(--i70); } .r-status.running { color: var(--accent); }
@@ -193,14 +200,15 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
 
 <div class="tab story" id="tab-machine">
 <div class="wrap">
-<h2>The machine <small>PARAM 8000 · EMULATED</small></h2>
-<p>Sixty-four INMOS T800s, each emulated by <a href="https://github.com/pahihu/t4">t4</a> compiled to WebAssembly in its own Worker, run in lockstep on one virtual clock at ten instructions per microsecond. Time on this machine is the same on every computer that opens the page, and every run produces the same bytes. The programs are real transputer binaries from the period, most of them produced by INMOS's 1990 occam toolset. Pick one; the nodes light as they work; the result appears underneath.</p>
 </div>
-<figure class="wide">
-  <svg id="machine" class="machine" viewBox="0 0 900 300" role="img" aria-label="Schematic of a 64-transputer PARAM 8000: an 8 by 8 array of T800 nodes, a host card, and a link switch. Nodes light while they run."></svg>
-  <figcaption>Schematic, not a photograph: 64 T800 nodes, a host card, a link switch. <span id="machine-status">Idle.</span></figcaption>
-</figure>
+<div class="machine-strip">
+  <svg id="machine" class="machine" viewBox="0 0 900 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Schematic of a 64-transputer PARAM 8000: an 8 by 8 array of T800 nodes, a host card, and a link switch. Nodes light while they run."></svg>
+  <div class="machine-cap">PARAM 8000, schematic: 64 T800 nodes, a host card, a link switch. Nodes light while they compute; links glow while they carry data. <span id="machine-status">Idle — pick a program below.</span></div>
+</div>
 <div class="wrap">
+<h2>The machine <small>PARAM 8000 · EMULATED</small></h2>
+<p>Sixty-four INMOS T800s, each emulated by <a href="https://github.com/pahihu/t4">t4</a> compiled to WebAssembly in its own Worker, run in lockstep on one virtual clock at ten instructions per microsecond. Time on this machine is the same on every computer that opens the page, and every run produces the same bytes. The programs are real transputer binaries from the period, most produced by INMOS's 1990 occam toolset.</p>
+<p class="steps"><b>1</b> pick a program &nbsp; <b>2</b> the machine above lights up while it runs &nbsp; <b>3</b> the result appears under the cards. Small programs finish in a blink; the raytracer and MINIX run for a while.</p>
 <div class="programs">
   <div class="card"><h3>Hello, world</h3><p>One transputer, one line of occam. 3,578 instructions.</p><div class="row"><button data-prog="hello">run</button></div></div>
   <div class="card"><h3>Primes to 2,000</h3><p>Sieve of Eratosthenes, occam, one node. It asks for a number; the page types 2000.</p><div class="row"><button data-prog="prime">run</button></div></div>
@@ -211,7 +219,7 @@ footer { padding: 8px 16px 12px; color: var(--i30); font-size: 11px; border-top:
   <div class="card"><h3>Boot MINIX 1.5</h3><p>A Unix on a transputer, 1990. Boots to a login prompt; log in as <code>root</code> and type at it.</p><div class="row"><button data-prog="minix">boot</button></div></div>
 </div>
 <div class="result" id="result" hidden>
-  <div class="result-head"><b id="r-title">—</b><span id="r-status" class="r-status">—</span><span class="spacer"></span><button id="r-stop" disabled>stop</button><a href="#workbench" data-tab="workbench">open in workbench</a></div>
+  <div class="result-head"><span class="r-label">RESULT</span><b id="r-title">—</b><span id="r-status" class="r-status">—</span><span class="spacer"></span><button id="r-stop" disabled>stop</button><a href="#workbench" data-tab="workbench">open in workbench</a></div>
   <canvas id="r-image" class="r-image" width="256" height="256" hidden></canvas>
   <pre id="r-out" class="r-out"></pre>
   <div class="r-input"><input id="r-stdin" placeholder="type here while a program waits for input (MINIX: root ⏎)" autocomplete="off"></div>

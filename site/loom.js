@@ -13,8 +13,11 @@ function showTab(name) {
   if (!TABS.includes(name)) name = "history";
   for (const t of TABS) { document.getElementById(`tab-${t}`)?.classList.toggle("on", t === name); }
   for (const a of document.querySelectorAll("#nav a[data-tab]")) a.classList.toggle("on", a.dataset.tab === name);
+  const changed = !document.getElementById(`tab-${name}`)?.dataset.shown;
   if (location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
-  window.scrollTo({ top: 0 });
+  for (const t of TABS) delete document.getElementById(`tab-${t}`).dataset.shown;
+  document.getElementById(`tab-${name}`).dataset.shown = "1";
+  if (changed) window.scrollTo({ top: 0 });
 }
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 document.addEventListener("click", (e) => { const a = e.target.closest("a[data-tab]"); if (a) { e.preventDefault(); showTab(a.dataset.tab); } });
@@ -146,7 +149,9 @@ async function program(name, n) {
   $("result").hidden = false; $("r-title").textContent = p.title; $("r-status").textContent = "booting"; $("r-status").classList.add("running");
   $("r-out").textContent = ""; $("r-stats").textContent = ""; $("r-stop").disabled = false;
   document.querySelector(".r-input").style.display = p.interactive ? "" : "none";
-  $("result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const strip = document.querySelector(".machine-strip"), nav = document.getElementById("nav");
+  $("result").style.scrollMarginTop = (nav.offsetHeight + strip.offsetHeight + 8) + "px";
+  $("result").scrollIntoView({ behavior: "smooth", block: "start" });
   const rec = await runOnce(p.args, { label: p.title, keys: p.keys || "" });
   $("r-status").textContent = rec.why; $("r-status").classList.remove("running"); $("r-stop").disabled = true;
   $("r-stats").textContent = `${fmt(rec.instr)} instructions per node · ${fmtUs(rec.instr / 10)} of machine time · ${(rec.ms / 1000).toFixed(1)} s in this browser${rec.nodes > 1 ? ` · ${rec.nodes} nodes · ${fmt(rec.msgs)} link messages, ${fmt(rec.bytes)} bytes` : ""}`;
@@ -300,13 +305,13 @@ function machineInit(topo) {
     machine.svg.insertBefore(line, machine.svg.children[3]);
     machine.traces.set(`${a}.${x}→${b}.${y}`, { line, last: -1 }); machine.traces.set(`${b}.${y}→${a}.${x}`, { line, last: -1 });
   }
-  $("machine-status").textContent = `Booting ${topo.nodes} node${topo.nodes > 1 ? "s" : ""}…`;
+  $("machine-status").textContent = `Booting ${current?.title || ""} on ${topo.nodes} node${topo.nodes > 1 ? "s" : ""}…`;
 }
 function machinePaint(k, results, final = false) {
   if (!machine.svg || !machine.n) return;
   for (let i = 0; i < machine.n; i++) machine.chips[i].classList.toggle("busy", !final && !!results && results[i].ran > 0 && !results[i].halted);
   for (const t of machine.traces.values()) t.line.classList.toggle("hot", !final && k - t.last < 4);
-  if (final) { $("machine-status").textContent = `Last run: ${machine.n} node${machine.n > 1 ? "s" : ""}, ${fmt(fabric?.stats.msgs || 0)} link messages.`; return; }
+  if (final) { $("machine-status").textContent = `Finished: ${current?.title || "run"} on ${machine.n} node${machine.n > 1 ? "s" : ""}${machine.n > 1 ? `, ${fmt(fabric?.stats.msgs || 0)} link messages` : ""}. Result below.`; return; }
   $("machine-status").textContent = `Running on ${machine.n} node${machine.n > 1 ? "s" : ""}: ${results ? results.filter((r) => r.ran > 0).length : 0} computing, ${fmt(fabric?.stats.msgs || 0)} link messages so far.`;
   if (current) $("r-status").textContent = `running · ${(k * (fabric?.Q || 0) / 10 / 1e6).toFixed(1)} s of machine time`;
 }
