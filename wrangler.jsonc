@@ -7,7 +7,6 @@
   "assets": { "directory": "./site", "binding": "ASSETS", "html_handling": "auto-trailing-slash", "not_found_handling": "404-page", "run_worker_first": ["/piece", "/piece/*"] },
   "services": [{ "binding": "PIECE", "service": "param" }],
   "routes": [
-    { "pattern": "param.naklitechie.com", "custom_domain": true },
-    { "pattern": "loom.naklitechie.com", "custom_domain": true }
+    { "pattern": "param.naklitechie.com", "custom_domain": true }
   ]
 }
